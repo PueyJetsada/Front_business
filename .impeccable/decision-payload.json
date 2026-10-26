@@ -1,0 +1,256 @@
+{
+  "title": "เลือกสไตล์การออกแบบ (Visual World) สำหรับ CAMPUSHOP",
+  "question": "ระบบสุ่มได้สไตล์ Bangkok Café Receipt & Stamp Card (พร้อมตัวเลือกแนะนำ Rangsit–Bangkadi Transit & Festival Pass และตัวเลือกเสริม) คุณสามารถเลือกสไตล์ที่ชอบสำหรับแอป CAMPUSHOP ได้เลยครับ",
+  "options": [
+    {
+      "id": "assigned",
+      "kind": "assigned",
+      "label": "Bangkok Café Receipt & Stamp Card",
+      "kicker": "THE ROLL",
+      "lineage": "วัฒนธรรมคาเฟ่รังสิต บิลหารค่าใช้จ่าย และการสะสมแต้มของนักศึกษา",
+      "thesis": "เปลี่ยนการหารค่ารถและเช็ก Vibe เพื่อนร่วมทางให้อบอุ่นและโปร่งใสเหมือนบิลคาเฟ่และการ์ดสะสมแต้ม",
+      "palette": [
+        "#FBF9F5",
+        "#1C1917",
+        "#EA580C",
+        "#16A34A"
+      ],
+      "materials": [
+        "warm thermal cream ground",
+        "perforated fare-split ledger",
+        "stamp-badge match seal"
+      ],
+      "viewport": "ส่วนหัว CAMPUSHOP พร้อมปุ่มสลับ Free/HOP Premium, แถบเลือก Real-time vs Pre-book, แผงปรับน้ำหนัก Distance vs Vibe (ลิมิตเดิน 500m) และการ์ดทริปของนาย Z (100m) กับนาย Y (0m) ที่แสดงบิลหารค่ารถชัดเจน",
+      "risk": "หากใช้สีครีมอ่อนเกินไปอาจดูนุ่มนวลเกินแอปเดินทาง จึงต้องตัดด้วยสีส้ม Persimmon และเขียว Matcha ที่คมชัด",
+      "raised": [
+        {
+          "from": "emigre-bitmap-specimen",
+          "raise": "ยกระดับขนาดตัวเลข % Match ให้ใหญ่และคมชัดระดับโปสเตอร์ตัดกับข้อมูลรายละเอียดขนาดเล็ก"
+        },
+        {
+          "from": "notation-diagram-systems-star-atlas",
+          "raise": "เพิ่มมาตรวัดรัศมีการเดิน 0–500 เมตรแบบชัดเจนบนแถบควบคุมและในการ์ดแต่ละใบ"
+        },
+        {
+          "from": "ikeda-datamatics",
+          "raise": "จัดเรียงตารางหารค่ารถและค่าธรรมเนียมแพลตฟอร์มด้วยระบบ Tabular Monospace ที่แม่นยำ"
+        }
+      ],
+      "htmlFrame": "390x844",
+      "html": ".impeccable/mocks/decision/assigned.html",
+      "comp": ".impeccable/mocks/decision/assigned.png"
+    },
+    {
+      "id": "model-pick",
+      "kind": "pick",
+      "label": "Rangsit–Bangkadi Transit & Festival Pass",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "ป้ายสายรถตู้ธรรมศาสตร์ รังสิต-บางกระดี่ ผสานสายรัดข้อมืองานเฟสติวัลนักศึกษา",
+      "thesis": "ผสานความแม่นยำของตั๋วเดินทางข้ามแคมปัสเข้ากับป้ายแท็ก Vibe ดนตรีและเกมสไตล์วัยรุ่น SIIT TU",
+      "palette": [
+        "#F7F5F0",
+        "#141619",
+        "#E03A2E",
+        "#F59E0B"
+      ],
+      "materials": [
+        "sunlit campus paper",
+        "crimson-amber transit accents",
+        "festival vibe pills"
+      ],
+      "viewport": "แอปมือถือที่แสดงเส้นทางต้นทาง-ปลายทางเหมือนตั๋วรถด่วน มีสไลเดอร์ปรับน้ำหนัก Distance vs Vibe แบบเรียลไทม์ และการ์ดทริปที่เปรียบเทียบนาย Y (0m) กับนาย Z (100m, Vibe ตรงกัน) ทันที",
+      "risk": "เป็นสไตล์ที่คุ้นตาที่สุดสำหรับแอปเดินทางและไลฟ์สไตล์นักศึกษา",
+      "htmlFrame": "390x844",
+      "html": ".impeccable/mocks/decision/model-pick.html",
+      "comp": ".impeccable/mocks/decision/model-pick.png"
+    },
+    {
+      "id": "challenger-boarding-pass",
+      "kind": "challenger",
+      "catalogId": "vernacular-ephemera-boarding-pass-and-gate-board",
+      "label": "Boarding Pass & Live Gate Board",
+      "verdict": "competitive",
+      "lineage": "ตั๋ว Boarding Pass และกระดานจัดลำดับ Gate แบบเรียลไทม์",
+      "thesis": "การ์ดทริปแบ่งสัดส่วนเหมือนตั๋วเดินทาง พร้อมกระดานจัดอันดับที่สลับตำแหน่งทันทีเมื่อปรับน้ำหนัก Distance vs Vibe",
+      "palette": [
+        "#F4F5F7",
+        "#111827",
+        "#FF4D00",
+        "#059669"
+      ],
+      "materials": [
+        "segmented boarding pass cards",
+        "tabular departure board",
+        "live rerank highlight"
+      ],
+      "viewport": "หน้าจอค้นหาทริปที่แสดงเวลานับถอยหลังและระยะเดินเป็นตัวเลข Tabular ชัดเจน เมื่อเลื่อนสไลเดอร์ ลำดับของนาย Y และนาย Z จะสลับที่กันพร้อมไฮไลต์สีแจ้งเตือน",
+      "case": "เข้ากับระบบจัดเรียง % Match แบบเรียลไทม์และโหมด Real-time Hop ได้อย่างยอดเยี่ยม",
+      "risk": "อาจให้ความรู้สึกเป็นทางการเหมือนสนามบินหากไม่เติมสีสันของ Vibe Tags",
+      "htmlFrame": "390x844",
+      "html": ".impeccable/mocks/decision/challenger-boarding-pass.html",
+      "comp": ".impeccable/mocks/decision/challenger-boarding-pass.png",
+      "board": "https://impeccable.style/worlds/cards/vernacular-ephemera-boarding-pass-and-gate-board.webp",
+      "hero": "https://impeccable.style/worlds/cards/vernacular-ephemera-boarding-pass-and-gate-board-hero.webp"
+    },
+    {
+      "id": "challenger-campus-map",
+      "kind": "challenger",
+      "catalogId": "aww2-zoo-gardens-guide-map",
+      "label": "Campus Zone & Capsule Guide",
+      "verdict": "competitive",
+      "lineage": "แผนที่โซนสีสดใสและปุ่มแคปซูลสไตล์คู่มือกิจกรรม",
+      "thesis": "แบ่งโซนรังสิต-บางกระดี่-TU Dome ด้วยสีพื้นสดใสและปุ่มแคปซูล Vibe สีเหลือง คอรัล ฟ้า และม่วงพาสเทล",
+      "palette": [
+        "#F5F1E4",
+        "#2C2E2A",
+        "#8ED462",
+        "#FF705D"
+      ],
+      "materials": [
+        "flat vibrant zone surfaces",
+        "capsule pill controls",
+        "springy motion"
+      ],
+      "viewport": "หน้าจอสีครีมตัดเขียวสดและคอรัล ปุ่มกรอง Vibe และโหมดการจองเป็นทรงแคปซูลสีสันสดใส อ่านง่ายและมีชีวิตชีวาสไตล์วัยรุ่นมหาวิทยาลัย",
+      "case": "สร้างความรู้สึกสนุกสนานเป็นกันเองสำหรับการหาเพื่อนร่วมทางที่มี Vibe ตรงกัน",
+      "risk": "สีสันที่สดหลายสีต้องจัดลำดับความสำคัญของตัวเลขระยะทางให้ชัดเจน",
+      "htmlFrame": "390x844",
+      "html": ".impeccable/mocks/decision/challenger-campus-map.html",
+      "comp": ".impeccable/mocks/decision/challenger-campus-map.png",
+      "board": "https://impeccable.style/worlds/cards/aww2-zoo-gardens-guide-map.webp",
+      "hero": "https://impeccable.style/worlds/cards/aww2-zoo-gardens-guide-map-hero.webp"
+    },
+    {
+      "id": "challenger-crouwel",
+      "kind": "challenger",
+      "catalogId": "crouwel-grid-specimen",
+      "label": "SIIT Grid Specimen",
+      "verdict": "competitive",
+      "lineage": "ระบบกริดเรขาคณิตสไตล์ Wim Crouwel และสตูดิโอวิศวกรรม SIIT",
+      "thesis": "วางโครงสร้างการ์ดทริปและคะแนน % Match บนเส้นกริดสีน้ำเงินจางที่แม่นยำระดับวิศวกรรม",
+      "palette": [
+        "#FFFFFF",
+        "#0F172A",
+        "#2563EB",
+        "#EF4444"
+      ],
+      "materials": [
+        "visible construction gridlines",
+        "bold geometric numerals",
+        "modular cells"
+      ],
+      "viewport": "ตารางกริดที่แบ่งช่องคะแนน Match %, ระยะห่างจุดส่ง (0m / 100m) และราคาหารต่อคนอย่างเป็นระเบียบ",
+      "case": "สะท้อนตัวตนนักศึกษาสายวิศวะ/เทคฯ SIIT ได้ดีและอ่านค่าตัวเลขง่ายมาก",
+      "risk": "อาจดูขรึมกว่าแอปโซเชียลทั่วไปเล็กน้อย",
+      "htmlFrame": "390x844",
+      "html": ".impeccable/mocks/decision/challenger-crouwel.html",
+      "comp": ".impeccable/mocks/decision/challenger-crouwel.png",
+      "board": "https://impeccable.style/worlds/cards/crouwel-grid-specimen.webp",
+      "hero": "https://impeccable.style/worlds/cards/crouwel-grid-specimen-hero.webp"
+    },
+    {
+      "id": "challenger-emigre",
+      "kind": "challenger",
+      "catalogId": "emigre-bitmap-specimen",
+      "label": "Emigre Bitmap Specimen",
+      "verdict": "declined",
+      "lineage": "สิ่งพิมพ์ฟอนต์พิกเซลยุค 90",
+      "thesis": "ใช้ฟอนต์พิกเซลขนาดใหญ่ตัดกับคอลัมน์ข้อความละเอียด",
+      "palette": [
+        "#FAF9F6",
+        "#111111",
+        "#FF2E00"
+      ],
+      "materials": [
+        "coarse bitmap display",
+        "halftone dot texture"
+      ],
+      "viewport": "หัวข้อพิกเซลขนาดใหญ่เหนือรายการทริป",
+      "case": "ฟอนต์พิกเซลความละเอียดต่ำทำให้อ่านสระและวรรณยุกต์ภาษาไทยบนหน้าจอมือถือได้ยาก",
+      "risk": "ลดทอนความชัดเจนของชื่อสถานที่และรายละเอียดทริปภาษาไทย",
+      "kept": "ความต่างของขนาดตัวเลข % Match ที่ใหญ่ชัดเจนตัดกับข้อมูลรอง",
+      "board": "https://impeccable.style/worlds/cards/emigre-bitmap-specimen.webp",
+      "hero": "https://impeccable.style/worlds/cards/emigre-bitmap-specimen-hero.webp"
+    },
+    {
+      "id": "challenger-star-atlas",
+      "kind": "challenger",
+      "catalogId": "notation-diagram-systems-star-atlas",
+      "label": "Celestial Star Atlas",
+      "verdict": "declined",
+      "lineage": "แผนที่กลุ่มดาวในความมืดใต้ไฟฉายสีแดง",
+      "thesis": "แทนจุดนัดพบด้วยขนาดจุดตามความสำคัญบนพื้นสีกรมท่าเข้ม",
+      "palette": [
+        "#0B132B",
+        "#F8FAFC",
+        "#EF4444"
+      ],
+      "materials": [
+        "deep navy star chart",
+        "red night-vision rings"
+      ],
+      "viewport": "หน้าจอสีกรมท่าเข้มพร้อมวงแหวนสีแดงรอบจุดนัดพบ",
+      "case": "บรรยากาศดูดาวตอนตีสองไม่สอดคล้องกับการเดินทางไปเรียนตอนเช้าของนักศึกษา",
+      "risk": "มองเห็นยากเมื่อใช้งานกลางแจ้งระหว่างรอรถตู้ที่แคมปัสรังสิต",
+      "kept": "ระบบวงแหวนบอกรัศมีระยะเดิน 0–500 เมตรที่ชัดเจน",
+      "board": "https://impeccable.style/worlds/cards/notation-diagram-systems-star-atlas.webp",
+      "hero": "https://impeccable.style/worlds/cards/notation-diagram-systems-star-atlas-hero.webp"
+    },
+    {
+      "id": "challenger-ikeda",
+      "kind": "challenger",
+      "catalogId": "ikeda-datamatics",
+      "label": "Data-Sublime Barcode Field",
+      "verdict": "declined",
+      "lineage": "งานศิลปะข้อมูลขาว-ดำแบบบาร์โค้ดความหนาแน่นสูง",
+      "thesis": "แสดงข้อมูลการเดินทางทั้งหมดเป็นคอลัมน์ตัวเลขและบาร์โค้ดขาว-ดำล้วน",
+      "palette": [
+        "#000000",
+        "#FFFFFF"
+      ],
+      "materials": [
+        "pure black and white bars",
+        "dense monospace columns"
+      ],
+      "viewport": "ตารางข้อมูลขาวดำล้วนไร้สีสัน",
+      "case": "การตัดสีออกทั้งหมดทำให้สูญเสียความเป็นแอปหาเพื่อนร่วมทางและแยกหมวดหมู่ Vibe ได้ยาก",
+      "risk": "ดูเหมือนหน้าจอระบบเซิร์ฟเวอร์มากกว่าแอปนักศึกษา",
+      "kept": "การจัดเรียงตัวเลขราคาหารและค่าธรรมเนียมด้วย Tabular Monospace ที่คมกริบ",
+      "board": "https://impeccable.style/worlds/cards/ikeda-datamatics.webp",
+      "hero": "https://impeccable.style/worlds/cards/ikeda-datamatics-hero.webp"
+    }
+  ],
+  "reroll": {
+    "registers": [
+      "safer",
+      "bolder"
+    ]
+  },
+  "buildPath": {
+    "value": "code",
+    "toggle": true
+  },
+  "canon": true,
+  "canonCard": {
+    "kind": "canon",
+    "label": "Modern Ride-Share Standard",
+    "thesis": "ดีไซน์แอปเรียกรถมาตรฐานสากลที่สะอาดตา คุ้นเคย และใช้งานง่ายทันที",
+    "palette": [
+      "#F8FAFC",
+      "#0F172A",
+      "#10B981",
+      "#6366F1"
+    ],
+    "materials": [
+      "clean white cards",
+      "emerald & indigo accents",
+      "familiar mobile app shell"
+    ],
+    "viewport": "หน้าจอแอปเรียกรถมาตรฐานพร้อมแถบค้นหา สไลเดอร์ปรับตัวกรอง และการ์ดทริปที่คุ้นเคย",
+    "risk": "ดูใกล้เคียงกับแอปเรียกรถทั่วไปในท้องตลาด",
+    "htmlFrame": "390x844",
+    "html": ".impeccable/mocks/decision/canon.html",
+    "comp": ".impeccable/mocks/decision/canon.png"
+  },
+  "steer": true
+}
