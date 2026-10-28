@@ -1549,9 +1549,9 @@ export default function App() {
                 </nav>
               </div>
 
-              {/* Bottom Sidebar Status Card */}
-              <div className="space-y-2 pt-3 border-t border-slate-200">
-                {activeBooking && activeBookedRideObj && (
+              {/* Bottom Sidebar Status Card (Only shown when an active trip is ongoing) */}
+              {activeBooking && activeBookedRideObj && (
+                <div className="pt-3 border-t border-slate-200">
                   <button
                     type="button"
                     onClick={() =>
@@ -1567,63 +1567,8 @@ export default function App() {
                       {activeBookedRideObj.hostName}
                     </div>
                   </button>
-                )}
-
-                <div className="flex items-center justify-between gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConfirmPremiumStep(false);
-                      setShowPremiumModal(true);
-                    }}
-                    className={`flex-1 min-h-[44px] px-2.5 py-2 rounded-xl text-[11px] font-black border flex items-center justify-center gap-1 transition ${
-                      isPremium
-                        ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
-                        : 'bg-slate-100 text-slate-700 border-slate-300'
-                    }`}
-                  >
-                    <IconCrown size={13} />
-                    <span>{isPremium ? 'HOP PRO' : 'อัปเกรด PRO'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
-                    title="สลับภาษา (Switch Language TH / EN)"
-                    aria-label="สลับภาษา TH / EN"
-                    className="min-h-[44px] px-2.5 rounded-xl bg-slate-100 hover:bg-orange-50 border border-slate-200 text-[10px] font-black flex items-center gap-1 transition shrink-0"
-                  >
-                    <span
-                      className={
-                        lang === 'th' ? 'text-orange-600' : 'text-slate-400'
-                      }
-                    >
-                      TH
-                    </span>
-                    <span className="text-slate-300">/</span>
-                    <span
-                      className={
-                        lang === 'en' ? 'text-orange-600' : 'text-slate-400'
-                      }
-                    >
-                      EN
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-                    aria-label="สลับโหมดสีหน้าจอ"
-                    className="min-w-[44px] min-h-[44px] rounded-xl bg-slate-100 hover:bg-orange-50 border border-slate-200 text-slate-700 flex items-center justify-center transition shrink-0"
-                  >
-                    {theme === 'light' ? (
-                      <IconMoon size={16} />
-                    ) : (
-                      <IconSun size={16} className="text-orange-400" />
-                    )}
-                  </button>
                 </div>
-              </div>
+              )}
             </aside>
           )}
 
