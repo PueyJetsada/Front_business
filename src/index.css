@@ -8,14 +8,24 @@
   caret-color: #f97316;
 }
 
+.dark {
+  color-scheme: dark;
+}
+
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
 body {
   margin: 0;
   padding: 0;
+  width: 100%;
+  height: 100%;
+  overscroll-behavior-y: none;
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
   font-family: 'IBM Plex Sans Thai', system-ui, -apple-system, sans-serif;
   background-color: #f1f5f9;
   color: #0f172a;
@@ -23,7 +33,7 @@ body {
 }
 
 #root {
-  min-height: 100svh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -32,56 +42,191 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Custom themed scrollbars inside the mobile frame */
+/* Native Safe Area Insets for iOS (Notch / Dynamic Island / Home Indicator) & Android */
+.safe-top {
+  padding-top: max(env(safe-area-inset-top, 0px), 0px);
+}
+
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0px);
+}
+
+/* Hide browser-like scrollbars for authentic Native iOS/Android scroll feel */
+.custom-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 .custom-scroll::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 0px;
+  height: 0px;
+  display: none;
 }
 
-.custom-scroll::-webkit-scrollbar-track {
-  background: #f1f5f9;
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
-.custom-scroll::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 9999px;
+.no-scrollbar {
+  -webkit-overflow-scrolling: touch;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-.custom-scroll::-webkit-scrollbar-thumb:hover {
-  background: #f97316;
+/* Native Touch Press Feedback */
+button:active:not(:disabled),
+[role='button']:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
-/* Custom Range Slider Styling */
+/* Automatic surface & typography adaptation inside .theme-dark */
+.theme-dark .bg-white {
+  background-color: #1e293b !important;
+}
+
+.theme-dark .bg-slate-50 {
+  background-color: #0f172a !important;
+}
+
+.theme-dark .bg-slate-100,
+.theme-dark .bg-slate-100\/80 {
+  background-color: #1e293b !important;
+}
+
+.theme-dark .bg-orange-50,
+.theme-dark .bg-orange-50\/80 {
+  background-color: rgba(249, 115, 22, 0.14) !important;
+}
+
+.theme-dark .bg-teal-50 {
+  background-color: rgba(13, 148, 136, 0.16) !important;
+}
+
+.theme-dark .bg-emerald-50 {
+  background-color: rgba(16, 185, 129, 0.16) !important;
+}
+
+.theme-dark .bg-rose-50 {
+  background-color: rgba(244, 63, 94, 0.15) !important;
+}
+
+.theme-dark .bg-amber-50,
+.theme-dark .bg-amber-100 {
+  background-color: rgba(245, 158, 11, 0.18) !important;
+}
+
+.theme-dark .text-slate-900,
+.theme-dark .text-slate-800 {
+  color: #f8fafc !important;
+}
+
+.theme-dark .text-slate-700,
+.theme-dark .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+
+.theme-dark .text-slate-500,
+.theme-dark .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+.theme-dark .text-orange-950,
+.theme-dark .text-orange-900,
+.theme-dark .text-orange-800 {
+  color: #fdba74 !important;
+}
+
+.theme-dark .text-teal-950,
+.theme-dark .text-teal-900,
+.theme-dark .text-teal-800,
+.theme-dark .text-teal-700 {
+  color: #5eead4 !important;
+}
+
+.theme-dark .text-emerald-800,
+.theme-dark .text-emerald-700 {
+  color: #6ee7b7 !important;
+}
+
+.theme-dark .text-amber-950,
+.theme-dark .text-amber-900 {
+  color: #fde68a !important;
+}
+
+.theme-dark .text-rose-900,
+.theme-dark .text-rose-700 {
+  color: #fda4af !important;
+}
+
+.theme-dark .border-slate-200,
+.theme-dark .border-slate-200\/70,
+.theme-dark .border-slate-300,
+.theme-dark .border-slate-100 {
+  border-color: #334155 !important;
+}
+
+.theme-dark .border-orange-200,
+.theme-dark .border-orange-100 {
+  border-color: rgba(249, 115, 22, 0.35) !important;
+}
+
+.theme-dark .border-teal-200,
+.theme-dark .border-teal-300 {
+  border-color: rgba(20, 184, 166, 0.4) !important;
+}
+
+.theme-dark .border-emerald-200 {
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+.theme-dark .border-rose-200 {
+  border-color: rgba(244, 63, 94, 0.4) !important;
+}
+
+.theme-dark select option {
+  background-color: #1e293b;
+  color: #f8fafc;
+}
+
+/* Custom Range Slider Styling (Native Touch Thumb) */
 input[type='range'].hop-slider {
   -webkit-appearance: none;
   appearance: none;
-  height: 6px;
+  height: 8px;
   border-radius: 9999px;
   background: #e2e8f0;
   cursor: pointer;
-  margin: 4px 0;
+  margin: 10px 0;
+  touch-action: pan-y;
+}
+
+.theme-dark input[type='range'].hop-slider {
+  background: #334155;
 }
 
 input[type='range'].hop-slider::-webkit-slider-runnable-track {
-  height: 6px;
+  height: 8px;
   border-radius: 9999px;
 }
 
 input[type='range'].hop-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  height: 16px;
-  width: 16px;
+  height: 24px;
+  width: 24px;
   border-radius: 9999px;
   background: #f97316;
-  border: 2.5px solid #ffffff;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.3);
-  margin-top: -5px;
+  border: 3px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.35);
+  margin-top: -8px;
   transition: transform 0.15s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-input[type='range'].hop-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.12);
+input[type='range'].hop-slider::-webkit-slider-thumb:hover,
+input[type='range'].hop-slider::-webkit-slider-thumb:active {
+  transform: scale(1.14);
   background: #ea580c;
 }
 
@@ -126,7 +271,7 @@ textarea:focus-visible {
 @keyframes sheet-rise {
   0% {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(32px);
   }
   100% {
     opacity: 1;

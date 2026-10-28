@@ -45,12 +45,27 @@ typography:
     fontSize: "0.75rem"
     fontWeight: 600
     lineHeight: 1.5
+  body-sm:
+    fontFamily: "IBM Plex Sans Thai, system-ui, -apple-system, sans-serif"
+    fontSize: "11px"
+    fontWeight: 700
+    lineHeight: 1.45
   label:
     fontFamily: "JetBrains Mono, IBM Plex Sans Thai, ui-monospace, monospace"
     fontSize: "0.625rem"
     fontWeight: 800
     lineHeight: 1.2
     fontFeature: "tnum"
+  caption:
+    fontFamily: "IBM Plex Sans Thai, system-ui, -apple-system, sans-serif"
+    fontSize: "9px"
+    fontWeight: 800
+    lineHeight: 1.2
+  micro:
+    fontFamily: "JetBrains Mono, IBM Plex Sans Thai, ui-monospace, monospace"
+    fontSize: "8px"
+    fontWeight: 800
+    lineHeight: 1.15
 rounded:
   sm: "6px"
   md: "8px"
