@@ -479,7 +479,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
           </button>
           {[
             'Indie',
-            'Valorant',
+            'Game',
             'สายชวนคุย',
             'สายเงียบฟังเพลง',
             'คาเฟ่',

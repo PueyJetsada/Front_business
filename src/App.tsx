@@ -207,7 +207,7 @@ export default function App() {
       timeLabel: 'พรุ่งนี้ • 09:00 น.',
       seats: 1,
       maxWalkMeters: 100,
-      vibePreference: 'Indie • Valorant • สายชวนคุย',
+      vibePreference: 'Indie • Game • สายชวนคุย',
       status: 'watching',
       createdAt: 'ตั้งไว้เมื่อ 5 นาทีที่แล้ว',
     },

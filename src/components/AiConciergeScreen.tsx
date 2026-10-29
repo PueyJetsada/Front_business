@@ -172,7 +172,7 @@ export const AiConciergeScreen: React.FC<AiConciergeProps> = ({
         timeLabel: `วันนี้/พรุ่งนี้ • ${draftSlots.time}`,
         seats: draftSlots.seats || 1,
         maxWalkMeters: cappedMeters,
-        vibePreference: 'Indie • Valorant • สายชวนคุย',
+        vibePreference: 'Indie • Game • สายชวนคุย',
         status: 'watching',
         createdAt: 'เมื่อสักครู่',
       };

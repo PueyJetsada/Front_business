@@ -370,7 +370,7 @@ const PHRASE_DICTIONARY: Array<[string, string]> = [
   ['กีฬา', 'Sports'],
   ['อนิเมะ', 'Anime'],
   ['สายกิน', 'Foodie'],
-  ['เกม', 'Gaming'],
+  ['เกม', 'Game'],
   ['สีขาว', 'White'],
   ['สีเทาโซนิค', 'Sonic Grey'],
   ['สีเทา', 'Grey'],
