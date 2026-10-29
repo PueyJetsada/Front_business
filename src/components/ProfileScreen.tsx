@@ -307,18 +307,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         <div className="space-y-3.5">
           {/* Vibe Tagging across 4 Categories */}
           <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-xs font-black text-slate-900">
-                  แท็ก Vibe และความชอบส่วนตัว
-                </h3>
-                <p className="text-[10px] text-slate-500 font-medium">
-                  แตะเพื่อเลือกแท็กที่ใช้คำนวณ % Match ({profile.vibes.length} แท็ก)
-                </p>
-              </div>
-              <span className="text-[10px] font-black text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-lg">
-                อัปเดตทันที
-              </span>
+            <div>
+              <h3 className="text-xs font-black text-slate-900">
+                แท็ก Vibe และความชอบส่วนตัว
+              </h3>
+              <p className="text-[10px] text-slate-500 font-medium">
+                {`แตะเพื่อเลือกแท็กที่ใช้คำนวณ % Match (${profile.vibes.length} แท็ก)`}
+              </p>
             </div>
 
             <div className="space-y-2.5">
