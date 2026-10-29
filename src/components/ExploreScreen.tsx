@@ -636,7 +636,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
               onClick={() => {
                 if (isTablet) setInspectedRideId(ride.id);
               }}
-              className={`bg-white p-3.5 rounded-2xl shadow-sm transition space-y-2.5 flex flex-col justify-between ${
+              className={`bg-white p-3.5 rounded-2xl shadow-sm transition space-y-2.5 flex flex-col justify-between overflow-hidden min-w-0 ${
                 isTablet ? 'cursor-pointer' : ''
               } ${
                 isInspectedOnTablet
@@ -646,22 +646,22 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                     : 'border-2 border-slate-200 hover:border-orange-300'
               }`}
             >
-              <div className="space-y-2">
+              <div className="space-y-2 min-w-0">
                 {/* Top Badges Row: Rank + Smart Match % + Drop-off Distance */}
-                <div className="flex items-start justify-between gap-1.5">
-                  <div className="flex flex-wrap gap-1 items-center">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-wrap gap-1 items-center min-w-0">
                     <span
-                      className={`text-[10px] font-black px-2 py-0.5 rounded-lg font-mono tabular-nums ${
+                      className={`text-[10px] font-black px-2 py-0.5 rounded-lg font-mono tabular-nums whitespace-nowrap ${
                         idx === 0
                           ? 'bg-orange-500 text-white shadow-sm'
-                          : 'bg-orange-100 text-orange-900'
+                          : 'bg-orange-100 text-orange-900 border border-orange-300'
                       }`}
                     >
                       #{idx + 1} • {match.totalMatch}% Match
                     </span>
 
                     <span
-                      className={`text-[10px] font-black px-2 py-0.5 rounded-lg tabular-nums ${
+                      className={`text-[10px] font-black px-2 py-0.5 rounded-lg tabular-nums whitespace-nowrap ${
                         ride.dropOffMeters === 0
                           ? 'bg-teal-100 text-teal-900 border border-teal-300'
                           : 'bg-amber-100 text-amber-900 border border-amber-300'
@@ -690,8 +690,8 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                 </div>
 
                 {/* Host Identity + Vehicle Model/Color/Plate (No Fuel Info) + Social Links */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                <div className="space-y-1.5 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <div className="w-10 h-10 rounded-full bg-orange-50 border-2 border-orange-200 flex items-center justify-center shrink-0">
                       {ride.hostType === 'driver' ? (
                         <DriverBunnySvg size={25} />
@@ -699,21 +699,19 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                         <PassengerBunnySvg size={25} />
                       )}
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <h4 className="text-xs font-black text-slate-900">
+                        <h4 className="text-xs font-black text-slate-900 truncate">
                           {ride.hostName}
                         </h4>
-                        <span className="text-[9px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                        <span className="text-[9px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded whitespace-nowrap">
                           {ride.faculty}
                         </span>
                       </div>
-                      <div className="text-[9px] font-bold text-slate-500 flex items-center gap-1.5 mt-0.5 tabular-nums">
-                        <span className="truncate max-w-[135px]">
-                          {ride.vehicleLabel}
-                        </span>
+                      <div className="text-[9px] font-bold text-slate-500 flex items-center gap-1.5 mt-0.5 tabular-nums flex-wrap">
+                        <span className="truncate">{ride.vehicleLabel}</span>
                         {ride.licensePlate && (
-                          <span className="bg-slate-200 text-slate-800 px-1.5 py-0.5 rounded font-mono text-[8px] whitespace-nowrap shrink-0">
+                          <span className="bg-slate-200 border border-slate-300 text-slate-800 px-1.5 py-0.5 rounded font-mono text-[8px] whitespace-nowrap shrink-0">
                             {ride.licensePlate}
                           </span>
                         )}
@@ -721,47 +719,51 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                     </div>
                   </div>
 
-                  {/* Social Links (IG / FB) */}
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    {ride.ig && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          triggerSocialPreview(`IG ${ride.ig}`);
-                        }}
-                        className="flex items-center gap-1 text-[9px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full active:scale-95 transition"
-                      >
-                        <IconInstagram size={9} />
-                        <span>{ride.ig}</span>
-                      </button>
-                    )}
-                    {ride.facebook && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          triggerSocialPreview(`FB ${ride.facebook}`);
-                        }}
-                        title={ride.facebook}
-                        className="flex items-center gap-1 text-[9px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full active:scale-95 transition"
-                      >
-                        <IconFacebook size={9} />
-                        <span>Facebook</span>
-                      </button>
-                    )}
-                  </div>
+                  {/* Social Links (IG / FB) neatly aligned inside the card without overflowing */}
+                  {(ride.ig || ride.facebook) && (
+                    <div className="flex flex-wrap items-center gap-1.5 pl-12">
+                      {ride.ig && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerSocialPreview(`IG ${ride.ig}`);
+                          }}
+                          className="inline-flex items-center gap-1 text-[9px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full active:scale-95 transition max-w-full truncate"
+                        >
+                          <IconInstagram size={9} className="shrink-0" />
+                          <span className="truncate">{ride.ig}</span>
+                        </button>
+                      )}
+                      {ride.facebook && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerSocialPreview(`FB ${ride.facebook}`);
+                          }}
+                          title={ride.facebook}
+                          className="inline-flex items-center gap-1 text-[9px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full active:scale-95 transition shrink-0"
+                        >
+                          <IconFacebook size={9} className="shrink-0" />
+                          <span>Facebook</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Route & Departure Info Box */}
-                <div className="bg-slate-50 rounded-xl p-2 border border-slate-200 space-y-1">
-                  <div className="flex items-center justify-between text-[11px] font-black text-slate-800">
-                    <span className="flex items-center gap-1">
+                <div className="bg-slate-50 rounded-xl p-2 border border-slate-200 space-y-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1.5 text-[11px] font-black text-slate-800 min-w-0">
+                    <span className="flex items-center gap-1 whitespace-nowrap shrink-0">
                       <IconPin size={12} className="text-orange-500 shrink-0" />
                       <span>{ride.origin}</span>
                     </span>
-                    <span className="text-orange-500 font-mono text-[10px]">━▶</span>
-                    <span className="text-teal-800 truncate max-w-[175px]">
+                    <span className="text-orange-500 font-mono text-[10px] shrink-0">
+                      ━▶
+                    </span>
+                    <span className="text-teal-800 truncate min-w-0 text-right">
                       {ride.actualDropOffName}
                     </span>
                   </div>
