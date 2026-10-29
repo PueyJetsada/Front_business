@@ -44,7 +44,7 @@ const PHRASE_DICTIONARY: Array<[string, string]> = [
   ['เปิดตี้', 'Create Hop'],
   ['AI จองให้', 'AI Concierge'],
   ['โปรไฟล์', 'Profile'],
-  ['คูปอง', 'Promos'],
+  ['คูปอง', 'Pro'],
   ['อัปเกรด', 'Upgrade'],
 
   // Single Active Booking Guard & Toasts

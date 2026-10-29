@@ -1666,7 +1666,7 @@ export default function App() {
                     type="button"
                     onClick={() => setScreen('payment')}
                     title="การชำระเงินและโค้ดโปรโมชัน"
-                    className={`min-h-[44px] px-3 py-1.5 rounded-xl text-[10px] font-black border flex items-center gap-1.5 transition ${
+                    className={`min-h-[44px] px-2.5 py-1.5 rounded-xl text-[10px] font-black border flex items-center gap-1 transition ${
                       screen === 'payment'
                         ? 'bg-orange-500 text-white border-orange-500'
                         : 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100'
