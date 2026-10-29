@@ -354,7 +354,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 <IconShieldCheck size={15} className="text-rose-600" />
                 <span>ตั้งค่าความปลอดภัยนักศึกษา</span>
               </span>
-              <span className="text-[9px] bg-rose-200 text-rose-900 font-black px-2 py-0.5 rounded-full">
+              <span className="text-[9px] bg-rose-600 text-white font-black px-2 py-0.5 rounded-full shadow-sm">
                 ยืนยันรหัสนักศึกษาแล้ว
               </span>
             </div>

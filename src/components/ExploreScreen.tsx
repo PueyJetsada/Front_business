@@ -409,14 +409,14 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
               <span>ระยะเดินสูงสุด (ไม่เกิน 500m):</span>
             </span>
             <div className="flex items-center gap-1.5">
-              <span className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-md font-mono text-[9px] whitespace-nowrap">
+              <span className="bg-emerald-600 text-white border border-emerald-500 px-2 py-0.5 rounded-md font-mono font-black text-[9px] whitespace-nowrap shadow-sm">
                 ≤ {maxWalkLimit}m
               </span>
               {guardrailBlockedRides.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setShowBlockedGuardrail(!showBlockedGuardrail)}
-                  className="bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 font-black px-1.5 py-0.5 rounded text-[9px] transition tabular-nums"
+                  className="bg-amber-500 hover:bg-amber-600 text-slate-950 border border-amber-400 font-black px-2 py-0.5 rounded-md text-[9px] transition tabular-nums shadow-sm"
                 >
                   {showBlockedGuardrail
                     ? 'ซ่อน'
@@ -455,7 +455,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                       {br.actualDropOffName}
                     </span>
                   </div>
-                  <span className="font-mono font-black text-rose-600 bg-rose-100 px-1.5 py-0.5 rounded tabular-nums text-[9px]">
+                  <span className="font-mono font-black text-white bg-rose-600 px-2 py-0.5 rounded-md tabular-nums text-[9px] shadow-sm">
                     ห่าง {br.dropOffMeters}m
                   </span>
                 </div>
@@ -649,22 +649,22 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
               <div className="space-y-2 min-w-0">
                 {/* Top Badges Row: Rank + Smart Match % + Drop-off Distance */}
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex flex-wrap gap-1 items-center min-w-0">
+                  <div className="flex flex-wrap gap-1.5 items-center min-w-0">
                     <span
-                      className={`text-[10px] font-black px-2 py-0.5 rounded-lg font-mono tabular-nums whitespace-nowrap ${
+                      className={`text-[10px] font-black px-2.5 py-0.5 rounded-lg font-mono tabular-nums whitespace-nowrap shadow-sm ${
                         idx === 0
-                          ? 'bg-orange-500 text-white shadow-sm'
-                          : 'bg-orange-100 text-orange-900 border border-orange-300'
+                          ? 'bg-orange-500 text-white border border-orange-400'
+                          : 'badge-match-rank bg-slate-900 text-amber-300 border border-amber-400'
                       }`}
                     >
                       #{idx + 1} • {match.totalMatch}% Match
                     </span>
 
                     <span
-                      className={`text-[10px] font-black px-2 py-0.5 rounded-lg tabular-nums whitespace-nowrap ${
+                      className={`text-[10px] font-black px-2.5 py-0.5 rounded-lg tabular-nums whitespace-nowrap shadow-sm ${
                         ride.dropOffMeters === 0
-                          ? 'bg-teal-100 text-teal-900 border border-teal-300'
-                          : 'bg-amber-100 text-amber-900 border border-amber-300'
+                          ? 'bg-emerald-600 text-white border border-emerald-400'
+                          : 'bg-teal-700 text-white border border-teal-400'
                       }`}
                     >
                       {ride.dropOffMeters === 0

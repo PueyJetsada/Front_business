@@ -208,9 +208,11 @@ button:active:not(:disabled),
   color: #93c5fd !important;
 }
 
-/* 3.5 High-Contrast License Plate Badge (60-30-10 System) */
+/* 3.5 High-Contrast License Plate & Rank Badges (60-30-10 System) */
 .plate-badge,
-.theme-dark .plate-badge {
+.theme-dark .plate-badge,
+.badge-match-rank,
+.theme-dark .badge-match-rank {
   background-color: #0f172a !important;
   color: #fde047 !important;
   border-color: #fbbf24 !important;
