@@ -841,7 +841,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                     </span>
                   </>
                 ) : (
-                  <span>เลือกที่นั่ง 2D และจองรถ (สุทธิ ฿{netPerSeat}/คน)</span>
+                  <span>{`เลือกที่นั่งและจองรถ (สุทธิ ฿${netPerSeat}/คน)`}</span>
                 )}
               </button>
             </div>
@@ -886,7 +886,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
             <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
               <div>
                 <span className="text-[9px] font-black text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
-                  รายละเอียดทริป & ผังที่นั่ง 2D
+                  รายละเอียดทริป & ผังที่นั่ง
                 </span>
                 <h3 className="text-sm font-black text-slate-900 mt-1">
                   {inspectedEntry.ride.hostName} ({inspectedEntry.ride.faculty})
@@ -909,7 +909,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
             {/* Live 2D Car Seat Preview in Split-View */}
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2">
               <div className="flex items-center justify-between text-[10px] font-black text-slate-700">
-                <span>ผังที่นั่งในรถ (2D Seat Preview)</span>
+                <span>ผังที่นั่งในรถ</span>
                 <span className="text-emerald-700">
                   ว่าง {inspectedEntry.ride.seatsLeft}/
                   {inspectedEntry.ride.totalSeats} ที่นั่ง
@@ -1014,7 +1014,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
             onClick={() => onOpenSeatModal(inspectedEntry.ride)}
             className="w-full min-h-[46px] bg-orange-500 hover:bg-orange-600 text-white font-black text-xs py-3 rounded-xl shadow-md active:scale-95 transition"
           >
-            เปิดผังเลือกที่นั่ง 2D และจองทริปนี้ →
+            เลือกที่นั่งและจองทริปนี้ →
           </button>
         </aside>
       )}

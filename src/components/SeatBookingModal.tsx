@@ -338,7 +338,7 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
         <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
           <div>
             <h3 className="text-sm font-black text-slate-900">
-              {step === 'select-seat' && 'เลือกที่นั่งในรถ (ผัง 2D)'}
+              {step === 'select-seat' && 'เลือกที่นั่งในรถ'}
               {step === 'confirm-book' && 'ยืนยันการจองและชำระเงิน'}
               {step === 'active-status' && 'สถานะทริปที่กำลังเดินทาง'}
               {step === 'confirm-cancel' && 'ยืนยันการยกเลิกการจอง'}

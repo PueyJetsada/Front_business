@@ -23,6 +23,9 @@ const PHRASE_DICTIONARY: Array<[string, string]> = [
   ['โหมดแสดงผล:', 'Preview Mode:'],
   ['อัตโนมัติตามจอ (แท็บเล็ต/iPad)', 'Auto Responsive (Tablet/iPad)'],
   ['อัตโนมัติตามจอ (มือถือ)', 'Auto Responsive (Mobile)'],
+  ['อัตโนมัติตามจอ', 'Auto Responsive'],
+  ['แท็บเล็ต/iPad', 'Tablet/iPad'],
+  ['มือถือ', 'Mobile'],
   ['สมาร์ทโฟน (iOS / Android)', 'Smartphone (iOS / Android)'],
   ['แท็บเล็ต / iPad (Split-View)', 'Tablet / iPad (Split-View)'],
 
@@ -85,51 +88,68 @@ const PHRASE_DICTIONARY: Array<[string, string]> = [
   ['ยังไม่มีรอบเวลาที่ต้องการ?', 'Need another departure time?'],
   ['เปิดตี้สร้างทริปเองฟรี หรือตั้งระบบรอจองอัตโนมัติแบบเรียลไทม์', 'Create your own hop for free or set a real-time AI Auto-Book watcher'],
   ['+ เปิดตี้เอง', '+ Create Hop'],
-  ['รายละเอียดทริป & ผังที่นั่ง 2D', 'Trip Inspector & 2D Seats'],
-  ['ผังที่นั่งในรถ (2D Seat Preview)', 'Live 2D Car Seat Layout'],
+  ['รายละเอียดทริป & ผังที่นั่ง', 'Trip Details & Seat Layout'],
+  ['ผังที่นั่งในรถ', 'Car Seat Layout'],
   ['หน้ารถ (ทิศทางเดินทาง ▲)', 'Front of Car (Direction ▲)'],
   ['ว่าง (แตะจอง)', 'Open (Tap)'],
   ['ราคาสุทธิที่ต้องชำระ (ต่อที่นั่ง):', 'Final Net Fare (Per Seat):'],
-  ['เปิดผังเลือกที่นั่ง 2D และจองทริปนี้ →', 'Open 2D Seat Picker & Book →'],
+  ['เลือกที่นั่งและจองทริปนี้ →', 'Select Seat & Book This Ride →'],
+  ['เลือกที่นั่งและจองรถของ ', 'Select Seat & Book with '],
+  ['เลือกที่นั่งและจองรถ', 'Select Seat & Book'],
   ['ตั้งค่าตัวกรองการจับคู่ (Smart Match)', 'Smart Match & Walk Limit Settings'],
   ['ปรับน้ำหนักความสำคัญและเพดานระยะเดินสูงสุดไม่เกิน 500 เมตร', 'Adjust priority weights and the 500m maximum walk guardrail'],
   ['บันทึกและดูผลลัพธ์', 'Apply Filters'],
 
   // Price Breakdown & Eco Impact
   ['ค่าโดยสารปกติ (หารต่อคน):', 'Regular Shared Fare:'],
+  ['ค่าโดยสารปกติ (หารต่อคน ', 'Regular Shared Fare ('],
   ['ส่วนลดจาก HOP Premium:', 'HOP Premium Discount:'],
   ['ส่วนลดจากโค้ดโปรโมชัน:', 'Promo Code Discount:'],
+  ['ส่วนลดจากโค้ดโปรโมชัน', 'Promo Code Discount'],
   ['ราคาสุทธิที่ต้องชำระ (ยอดรวมสุดท้าย):', 'Final Net Price to Pay:'],
   ['ราคาสุทธิที่ต้องชำระ (สำหรับสมาชิก HOP Premium):', 'Final Net Fare (HOP Premium):'],
   ['ช่วยลดคาร์บอนและมลพิษจากทริปนี้:', 'Eco Carbon Saved on This Trip:'],
   ['ช่วยลดคาร์บอนจากการเดินทางร่วมกัน:', 'Eco Carbon Saved Together:'],
 
   // Seat Booking Modal & Post-Trip Review
-  ['เลือกที่นั่งในรถ (ผัง 2D)', 'Select Car Seat (2D Layout)'],
+  ['เลือกที่นั่งในรถ', 'Select Car Seat'],
   ['ยืนยันการจองและชำระเงิน', 'Confirm Booking & Payment'],
   ['สถานะทริปที่กำลังเดินทาง', 'Active Ongoing Trip Status'],
   ['ยืนยันการยกเลิกการจอง', 'Confirm Booking Cancellation'],
   ['สรุปการเดินทางและรีวิว', 'Trip Summary & Rating'],
-  ['ด้านหน้ารถ (Front)', 'Front of Vehicle'],
-  ['พวงมาลัย', 'Steering'],
+  ['ที่คุณเลือก', 'Selected'],
+  ['─── แถวที่นั่งผู้โดยสารด้านหลัง ───', '─── Rear Passenger Row ───'],
+  ['ตำแหน่งที่เลือก:', 'Selected Seats:'],
+  ['โค้ดโปรโมชัน:', 'Promo Code:'],
+  ['ไม่ใช้โค้ดส่วนลด', 'No Promo Code'],
+  ['วิธีชำระเงิน:', 'Payment Method:'],
+  ['ดำเนินการต่อเพื่อยืนยันการจอง', 'Continue to Confirm Booking'],
+  ['กรุณาตรวจสอบรายละเอียดก่อนยืนยันการจอง', 'Please Review Details Before Confirming'],
+  ['สามารถจองได้ทีละ 1 ทริป เมื่อยืนยันระบบจะล็อกที่นั่งและชำระเงินทันที', 'Max 1 active trip at a time. Confirming locks your seat immediately.'],
+  ['เส้นทาง:', 'Route:'],
+  ['รถและคนขับ:', 'Host & Vehicle:'],
+  ['ป้ายทะเบียน:', 'License Plate:'],
+  ['ที่นั่งที่เลือก:', 'Selected Seat:'],
+  ['← แก้ไขที่นั่ง', '← Change Seat'],
+  ['ยืนยันการจอง', 'Confirm Booking'],
+  ['กำลังเดินทาง • ล็อกที่นั่งแล้ว', 'Ongoing Trip • Seat Locked'],
+  ['เดินทางถึงจุดหมาย / จบทริป', 'Arrived / Complete Trip'],
+  ['กลับหน้าหลัก', 'Back to Explore'],
+  ['ยกเลิกการจองทริปนี้', 'Cancel This Booking'],
+  ['ต้องการยกเลิกที่นั่งในทริปนี้ใช่หรือไม่?', 'Cancel your seat on this trip?'],
+  ['ระบบจะคืนสิทธิ์ที่นั่ง', 'Your seat'],
+  ['และคืนเงิน', 'will be released and'],
+  ['กลับไปยังช่องทางชำระเงินของคุณทันที', 'will be refunded to your payment method immediately'],
+  ['← ไม่ยกเลิก', '← Keep Booking'],
+  ['ยืนยันยกเลิกการจอง', 'Confirm Cancel'],
+  ['✓ ปลดล็อกสถานะการจองแล้ว คุณสามารถจองทริปรอบถัดไปได้ทันที', '✓ Booking limit unlocked! You can now book your next trip immediately.'],
+  ['ให้คะแนนเพื่อนร่วมทาง / คนขับ', 'Rate Your Host / Driver'],
+  ['เขียนความประทับใจหรือข้อเสนอแนะ...', 'Share your experience or feedback...'],
+  ['ส่งรีวิวและกลับสู่หน้าหลัก →', 'Submit Review & Finish →'],
   ['ไม่ว่าง', 'Taken'],
   ['✓ เลือกแล้ว', '✓ Selected'],
   ['ว่าง', 'Available'],
-  ['ช่องทางชำระเงินและโค้ดโปรโมชัน', 'Payment Method & Promo Code'],
-  ['ดำเนินการต่อเพื่อตรวจสอบราคาสุทธิ →', 'Continue to Review Final Fare →'],
-  ['กรุณาเลือกที่นั่งอย่างน้อย 1 ที่นั่ง', 'Please select at least 1 seat'],
-  ['ตรวจสอบรายละเอียดก่อนยืนยันการจอง', 'Review Details Before Confirming'],
-  ['← กลับไปเปลี่ยนที่นั่ง', '← Change Seat'],
-  ['ยืนยันการจองที่นั่ง', 'Confirm Seat Booking'],
-  ['กำลังเดินทางอยู่ในขณะนี้', 'Trip Currently in Progress'],
-  ['ยกเลิกการจอง', 'Cancel Booking'],
-  ['ยืนยันการยกเลิกทริปนี้?', 'Cancel this active booking?'],
-  ['หากยกเลิก ที่นั่งของคุณจะถูกคืนให้เพื่อนนักศึกษาคนอื่นจองต่อได้ทันที', 'Your seat will be released immediately for other students to book.'],
-  ['← ย้อนกลับ', '← Go Back'],
-  ['ยืนยันยกเลิกทริป', 'Confirm Cancel'],
   ['เดินทางถึงจุดหมายเรียบร้อย!', 'You Have Arrived!'],
-  ['สรุปยอดชำระสุทธิและให้คะแนนเพื่อนร่วมทางเพื่อจบทริปสมบูรณ์', 'Review your final receipt and rate your host to complete the trip'],
-  ['ให้คะแนนความประทับใจ (1–5 ดาว)', 'Rate Your Trip Experience (1–5 Stars)'],
   ['1 ดาว — ต้องปรับปรุง', '1 Star — Needs Improvement'],
   ['2 ดาว — พอใช้', '2 Stars — Fair'],
   ['3 ดาว — ปานกลาง', '3 Stars — Good'],
@@ -137,8 +157,6 @@ const PHRASE_DICTIONARY: Array<[string, string]> = [
   ['5 ดาว — ประทับใจมาก!', '5 Stars — Impressive!'],
   ['เลือกคำชมด่วน (เลือกได้หลายข้อ)', 'Quick Compliment Tags (Multi-select)'],
   ['เขียนรีวิวเพิ่มเติม (ไม่บังคับ)', 'Additional Review Comment (Optional)'],
-  ['เช่น ขับนุ่มมาก เปิดเพลงตรงเทส จอดส่งถึงหน้าล็อบบี้เลย...', 'e.g., Smooth ride, great Indie playlist, dropped right at the lobby...'],
-  ['ส่งรีวิวและจบทริปสมบูรณ์', 'Submit Review & Complete Trip'],
 
   // Quick Review Tags
   ['ขับรถนุ่มปลอดภัย', 'Smooth & Safe Driving'],
@@ -293,7 +311,7 @@ const PHRASE_DICTIONARY: Array<[string, string]> = [
   ['สมาชิก HOP Premium', 'HOP Premium Membership'],
   ['สิทธิพิเศษระบบรอจองอัตโนมัติและส่วนลดจาก HOP Premium', 'Unlock real-time AI Auto-Book and HOP Premium fare discounts'],
   ['1. ผู้ใช้งานทั่วไป (ใช้งานฟรี 100%)', '1. Free Tier (100% Free Forever)'],
-  ['ค้นหาทริป ตั้งค่าระยะทาง/Vibe เลือกที่นั่ง 2D และเปิดตี้หารค่ารถได้ครบทุกฟีเจอร์', 'Search rides, customize distance/Vibe sliders, pick 2D seats, and create hops for free'],
+  ['ค้นหาทริป ตั้งค่าระยะทาง/Vibe เลือกที่นั่ง และเปิดตี้หารค่ารถได้ครบทุกฟีเจอร์', 'Search rides, customize distance/Vibe sliders, pick seats, and create hops for free'],
   ['2. สมาชิก HOP Premium', '2. HOP Premium Member'],
   ['สลับเป็นโหมดผู้ใช้ทั่วไป (Free User) →', 'Switch to Free Tier →'],
   ['สมัครสมาชิก HOP Premium (฿49/เดือน) →', 'Subscribe to HOP Premium (฿49/mo) →'],
@@ -377,6 +395,7 @@ const PHRASE_DICTIONARY: Array<[string, string]> = [
   ['จุดรับ:', 'Pickup:'],
   ['จุดส่ง:', 'Drop-off:'],
   ['ที่นั่ง:', 'Seats:'],
+  ['ที่นั่ง ', 'Seat '],
   ['ราคาสุทธิ', 'Net'],
   ['สุทธิ', 'Net'],
   ['ปกติ', 'Reg.'],
@@ -386,6 +405,18 @@ const PHRASE_DICTIONARY: Array<[string, string]> = [
   ['ว่าง ', 'Open '],
   [' ที่นั่ง', ' seats'],
   [' คัน', ' cars'],
+  [' รายการ', ' rides'],
+  ['ทริปที่จับคู่ได้', 'Matched Rides'],
+  ['ดูสถานะ/จบทริป', 'Status / Complete'],
+  ['กำลังเดินทาง', 'Ongoing Trip'],
+  ['พร้อมออกเดินทางทันที', 'Ready now'],
+  ['จุดรับห่าง ', 'Pickup '],
+  ['ออกใน ', 'Departs in '],
+  [' นาที', ' min'],
+  ['ระยะทาง ', 'Route '],
+  ['ช่วยลดคาร์บอน ', 'Saves '],
+  ['ค่ารถ ', 'Fare '],
+  ['บริการ ', 'Fee '],
   [' น.', ''],
   ['เดือน', 'mo'],
   ['ปิดหน้าต่าง', 'Close'],
@@ -411,13 +442,6 @@ export function translateThaiTextToEn(input: string): string {
 
   // Dynamic pattern replacements for remaining composite numbers/phrases
   result = result
-    .replace(/ทริปที่จับคู่ได้\s*\((\d+)\s*รายการ\)/g, 'Matched Rides ($1)')
-    .replace(/ออกใน\s*(\d+)\s*นาที\s*\(จุดรับห่าง\s*(\d+)m\)/g, 'Departs in $1 min (Pickup $2m)')
-    .replace(/พร้อมออกเดินทางทันที\s*\(จุดรับห่าง\s*(\d+)m\)/g, 'Ready now (Pickup $1m)')
-    .replace(/ระยะทาง\s*(\d+)%/g, 'Route $1%')
-    .replace(/ช่วยลดคาร์บอน\s*([\d.]+)\s*kg/g, 'Saves $1 kg')
-    .replace(/เลือกที่นั่ง 2D และจองรถ\s*\(Net\s*฿(\d+)\/คน\)/g, 'Pick 2D Seat & Book (Net ฿$1/seat)')
-    .replace(/เลือกที่นั่ง 2D และจองรถ\s*\(สุทธิ\s*฿(\d+)\/คน\)/g, 'Pick 2D Seat & Book (Net ฿$1/seat)')
     .replace(/\/คน/g, '/seat')
     .replace(/ส่วนลด HOP Premium/g, 'HOP Premium')
     .replace(/ค่าโดยสารปกติ/g, 'Regular')
@@ -427,7 +451,6 @@ export function translateThaiTextToEn(input: string): string {
     .replace(/ลดคาร์บอน\s*([\d.]+)\s*kg/g, 'Saved $1 kg')
     .replace(/รีวิวของคุณ:/g, 'Your Rating:')
     .replace(/ทริปที่เดินทางเสร็จสิ้นแล้ว/g, 'Completed Trips')
-    .replace(/เลือกที่นั่ง 2D และจองรถของ/g, 'Pick 2D Seat & Book with')
     .replace(/รถที่กำลังเปิดตี้บนเส้นทาง/g, 'Active Vehicles on Route')
     .replace(/แตะเพื่อเลือกแท็กที่ใช้คำนวณ % Match\s*\((\d+)\s*แท็ก\)/g, 'Tap to select tags used for Smart Match ($1 tags)')
     .replace(/เกินระยะ\s*\((\d+)\)/g, 'Over Limit ($1)')
