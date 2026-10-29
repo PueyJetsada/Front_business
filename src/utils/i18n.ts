@@ -249,7 +249,8 @@ const PHRASE_DICTIONARY: Array<[string, string]> = [
   ['บทบาทการใช้งาน', 'User Role'],
   ['หาคนหารค่ารถ', 'Co-Hopper'],
   ['ทั้งสองแบบ', 'Both Roles'],
-  ['แนะนำตัวสั้นๆ', 'Short Bio'],
+  ['เช่น คณะ สไตล์การเดินทาง เพลงที่ฟัง...', 'e.g. Faculty, travel style, favorite music...'],
+  ['แนะนำตัวสั้นๆ', 'Bio'],
   ['ช่องทางติดต่อโซเชียล', 'Social Contact Links'],
   ['ไม่บังคับ', 'Optional'],
   ['ข้อมูลรถยนต์สำหรับรับเพื่อนร่วมทาง', 'Vehicle Information (Driver)'],
@@ -454,6 +455,7 @@ export function translateThaiTextToEn(input: string): string {
     .replace(/ทริปที่เดินทางเสร็จสิ้นแล้ว/g, 'Completed Trips')
     .replace(/รถที่กำลังเปิดตี้บนเส้นทาง/g, 'Active Vehicles on Route')
     .replace(/แตะเพื่อเลือกแท็กที่ใช้คำนวณ % Match\s*\((\d+)\s*แท็ก\)/g, 'Tap to select tags used for Smart Match ($1 tags)')
+    .replace(/\((\d+)\/300\s*ตัวอักษร\)/g, '($1/300 chars)')
     .replace(/เกินระยะ\s*\((\d+)\)/g, 'Over Limit ($1)')
     .replace(/ซ่อน/g, 'Hide')
     .replace(/ห่าง\s*(\d+)m/g, '$1m away')

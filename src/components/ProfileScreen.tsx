@@ -200,16 +200,23 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Bio & Optional Social Links (IG / Facebook) */}
           <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <div>
-              <div className="text-xs font-black text-slate-900 mb-1">
-                แนะนำตัวสั้นๆ
+              <div className="text-xs font-black text-slate-900 mb-1 flex items-baseline gap-1.5 tabular-nums">
+                <span>Bio</span>
+                <span className="text-[10px] font-bold text-slate-500">
+                  {`(${profile.bio.length}/300 ตัวอักษร)`}
+                </span>
               </div>
               <textarea
                 rows={2}
+                maxLength={300}
                 value={profile.bio}
                 onChange={(e) =>
-                  onChangeProfile({ ...profile, bio: e.target.value })
+                  onChangeProfile({
+                    ...profile,
+                    bio: e.target.value.slice(0, 300),
+                  })
                 }
-                placeholder="แนะนำตัวสั้นๆ เช่น คณะ สไตล์การเดินทาง เพลงที่ฟัง..."
+                placeholder="เช่น คณะ สไตล์การเดินทาง เพลงที่ฟัง..."
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs font-medium text-slate-800 resize-none"
               />
             </div>
