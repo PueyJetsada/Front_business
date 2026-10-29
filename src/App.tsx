@@ -1336,15 +1336,29 @@ export default function App() {
     >
       {/* Desktop Presentation Device Preview Switcher (Visible on Screens >= 768px) */}
       {viewportWidth >= 768 && (
-        <div className="mb-2.5 flex items-center gap-1.5 bg-white/95 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-1.5 rounded-full shadow-sm text-[11px] font-black z-40">
-          <span className="text-slate-500 px-1">โหมดแสดงผล:</span>
+        <div
+          className={`mb-2.5 flex items-center gap-1.5 border px-3 py-1.5 rounded-full shadow-sm text-[11px] font-black z-40 ${
+            theme === 'dark'
+              ? 'bg-slate-900 border-slate-700 text-slate-100'
+              : 'bg-white/95 border-slate-300 text-slate-800'
+          }`}
+        >
+          <span
+            className={
+              theme === 'dark' ? 'text-slate-300 px-1' : 'text-slate-500 px-1'
+            }
+          >
+            โหมดแสดงผล:
+          </span>
           <button
             type="button"
             onClick={() => setDeviceMode('auto')}
             className={`px-3 py-1 rounded-full transition ${
               deviceMode === 'auto'
-                ? 'bg-slate-900 text-white'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-orange-500 text-white shadow-sm'
+                : theme === 'dark'
+                  ? 'text-slate-200 hover:bg-slate-800'
+                  : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
             อัตโนมัติตามจอ ({viewportWidth >= 768 ? 'แท็บเล็ต/iPad' : 'มือถือ'})
@@ -1355,7 +1369,9 @@ export default function App() {
             className={`px-3 py-1 rounded-full transition ${
               deviceMode === 'mobile'
                 ? 'bg-orange-500 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-100'
+                : theme === 'dark'
+                  ? 'text-slate-200 hover:bg-slate-800'
+                  : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
             สมาร์ทโฟน (iOS / Android)
@@ -1366,7 +1382,9 @@ export default function App() {
             className={`px-3 py-1 rounded-full transition ${
               deviceMode === 'tablet'
                 ? 'bg-orange-500 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-100'
+                : theme === 'dark'
+                  ? 'text-slate-200 hover:bg-slate-800'
+                  : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
             แท็บเล็ต / iPad (Split-View)

@@ -81,8 +81,14 @@ button:active:not(:disabled),
   transform: scale(0.96);
 }
 
-/* Automatic surface & typography adaptation inside .theme-dark */
-.theme-dark .bg-white {
+/* ============================================================================
+   HIGH-CONTRAST DARK MODE (.theme-dark)
+   Ensures all surfaces, badges, pills, seats, and text have WCAG AA/AAA contrast
+   ============================================================================ */
+
+/* 1. Neutral Surfaces */
+.theme-dark .bg-white,
+.theme-dark .bg-white\/95 {
   background-color: #1e293b !important;
 }
 
@@ -92,102 +98,162 @@ button:active:not(:disabled),
 
 .theme-dark .bg-slate-100,
 .theme-dark .bg-slate-100\/80 {
-  background-color: #1e293b !important;
+  background-color: #263349 !important;
 }
 
+.theme-dark .bg-slate-200,
+.theme-dark .bg-slate-200\/80 {
+  background-color: #334155 !important;
+}
+
+/* Keep dark buttons clearly distinguishable against #1e293b cards */
+.theme-dark button.bg-slate-900,
+.theme-dark span.bg-slate-900 {
+  background-color: #334155 !important;
+  border: 1px solid #64748b !important;
+  color: #ffffff !important;
+}
+
+/* 2. Tinted Badge & Card Surfaces (Dark translucent tint instead of pale pastel) */
 .theme-dark .bg-orange-50,
-.theme-dark .bg-orange-50\/80 {
-  background-color: rgba(249, 115, 22, 0.14) !important;
+.theme-dark .bg-orange-50\/70,
+.theme-dark .bg-orange-50\/80,
+.theme-dark .bg-orange-100 {
+  background-color: rgba(249, 115, 22, 0.2) !important;
 }
 
-.theme-dark .bg-teal-50 {
-  background-color: rgba(13, 148, 136, 0.16) !important;
+.theme-dark .bg-teal-50,
+.theme-dark .bg-teal-100 {
+  background-color: rgba(20, 184, 166, 0.22) !important;
 }
 
-.theme-dark .bg-emerald-50 {
-  background-color: rgba(16, 185, 129, 0.16) !important;
+.theme-dark .bg-emerald-50,
+.theme-dark .bg-emerald-100 {
+  background-color: rgba(16, 185, 129, 0.22) !important;
 }
 
-.theme-dark .bg-rose-50 {
-  background-color: rgba(244, 63, 94, 0.15) !important;
+.theme-dark .bg-rose-50,
+.theme-dark .bg-rose-100,
+.theme-dark .bg-rose-200 {
+  background-color: rgba(244, 63, 94, 0.22) !important;
 }
 
 .theme-dark .bg-amber-50,
 .theme-dark .bg-amber-100 {
-  background-color: rgba(245, 158, 11, 0.18) !important;
+  background-color: rgba(245, 158, 11, 0.22) !important;
 }
 
+.theme-dark .bg-blue-50,
+.theme-dark .bg-blue-100,
+.theme-dark .bg-sky-100 {
+  background-color: rgba(59, 130, 246, 0.22) !important;
+}
+
+/* 3. High-Contrast Typography in Dark Mode */
 .theme-dark .text-slate-900,
 .theme-dark .text-slate-800 {
-  color: #f8fafc !important;
+  color: #ffffff !important;
 }
 
 .theme-dark .text-slate-700,
 .theme-dark .text-slate-600 {
-  color: #cbd5e1 !important;
+  color: #e2e8f0 !important;
 }
 
 .theme-dark .text-slate-500,
 .theme-dark .text-slate-400 {
-  color: #94a3b8 !important;
+  color: #cbd5e1 !important;
 }
 
 .theme-dark .text-orange-950,
 .theme-dark .text-orange-900,
-.theme-dark .text-orange-800 {
+.theme-dark .text-orange-800,
+.theme-dark .text-orange-700,
+.theme-dark .text-orange-600 {
   color: #fdba74 !important;
 }
 
 .theme-dark .text-teal-950,
 .theme-dark .text-teal-900,
 .theme-dark .text-teal-800,
-.theme-dark .text-teal-700 {
+.theme-dark .text-teal-700,
+.theme-dark .text-teal-600 {
   color: #5eead4 !important;
 }
 
+.theme-dark .text-emerald-950,
+.theme-dark .text-emerald-900,
 .theme-dark .text-emerald-800,
-.theme-dark .text-emerald-700 {
+.theme-dark .text-emerald-700,
+.theme-dark .text-emerald-600 {
   color: #6ee7b7 !important;
 }
 
 .theme-dark .text-amber-950,
-.theme-dark .text-amber-900 {
+.theme-dark .text-amber-900,
+.theme-dark .text-amber-800 {
   color: #fde68a !important;
 }
 
+.theme-dark .text-rose-950,
 .theme-dark .text-rose-900,
-.theme-dark .text-rose-700 {
+.theme-dark .text-rose-800,
+.theme-dark .text-rose-700,
+.theme-dark .text-rose-600 {
   color: #fda4af !important;
 }
 
+.theme-dark .text-blue-700,
+.theme-dark .text-blue-600 {
+  color: #93c5fd !important;
+}
+
+/* 4. Borders & Dividers in Dark Mode */
 .theme-dark .border-slate-200,
 .theme-dark .border-slate-200\/70,
+.theme-dark .border-slate-200\/80,
 .theme-dark .border-slate-300,
 .theme-dark .border-slate-100 {
-  border-color: #334155 !important;
+  border-color: #475569 !important;
 }
 
 .theme-dark .border-orange-200,
 .theme-dark .border-orange-100 {
-  border-color: rgba(249, 115, 22, 0.35) !important;
+  border-color: rgba(251, 146, 60, 0.45) !important;
 }
 
 .theme-dark .border-teal-200,
 .theme-dark .border-teal-300 {
-  border-color: rgba(20, 184, 166, 0.4) !important;
+  border-color: rgba(45, 212, 191, 0.45) !important;
 }
 
-.theme-dark .border-emerald-200 {
-  border-color: rgba(16, 185, 129, 0.4) !important;
+.theme-dark .border-emerald-200,
+.theme-dark .border-emerald-300,
+.theme-dark .border-emerald-400 {
+  border-color: rgba(52, 211, 153, 0.5) !important;
 }
 
-.theme-dark .border-rose-200 {
-  border-color: rgba(244, 63, 94, 0.4) !important;
+.theme-dark .border-rose-200,
+.theme-dark .border-rose-300 {
+  border-color: rgba(251, 113, 133, 0.45) !important;
+}
+
+.theme-dark .border-amber-300 {
+  border-color: rgba(251, 191, 36, 0.5) !important;
+}
+
+.theme-dark .border-blue-200 {
+  border-color: rgba(96, 165, 250, 0.45) !important;
 }
 
 .theme-dark select option {
   background-color: #1e293b;
   color: #f8fafc;
+}
+
+.theme-dark input::placeholder,
+.theme-dark textarea::placeholder {
+  color: #94a3b8 !important;
 }
 
 /* Custom Range Slider Styling (Native Touch Thumb) */
