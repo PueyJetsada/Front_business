@@ -346,59 +346,59 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
         </div>
 
         {/* Simplified Smart Match Priority Filter & 500m Walking Limit */}
-        <div className="bg-white p-3 rounded-2xl border-2 border-orange-500/80 shadow-sm space-y-2">
+        <div className="bg-white p-3 rounded-2xl border-2 border-orange-500/80 shadow-sm space-y-2.5">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 min-w-0">
               <IconSliders size={15} className="text-orange-500 shrink-0" />
-              <h2 className="text-xs font-black text-slate-900 whitespace-nowrap">
+              <h2 className="text-xs font-black text-slate-900 truncate">
                 รูปแบบการจับคู่
               </h2>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <div className="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSortBy('smart');
-                    setVibeWeight(15);
-                  }}
-                  className={`min-h-[36px] text-[10px] px-2.5 py-1 rounded-lg font-black active:scale-95 transition whitespace-nowrap ${
-                    vibeWeight <= 40
-                      ? 'bg-teal-600 text-white shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  เน้นใกล้ (ระยะทาง)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSortBy('smart');
-                    setVibeWeight(80);
-                  }}
-                  className={`min-h-[36px] text-[10px] px-2.5 py-1 rounded-lg font-black active:scale-95 transition whitespace-nowrap ${
-                    vibeWeight > 40
-                      ? 'bg-orange-500 text-white shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  เน้น Vibe ตรงกัน
-                </button>
-              </div>
+            {!isTablet && (
+              <button
+                type="button"
+                onClick={() => setShowMobileFilterSheet(true)}
+                title="เปิดแผ่นตั้งค่าตัวกรองแบบละเอียด"
+                aria-label="ตั้งค่าตัวกรอง Match"
+                className="min-h-[36px] px-2.5 py-1 rounded-xl bg-orange-50 border border-orange-300 text-orange-700 text-[10px] font-black flex items-center gap-1 active:scale-95 transition shrink-0"
+              >
+                <IconSliders size={13} />
+                <span>ตัวกรองละเอียด</span>
+              </button>
+            )}
+          </div>
 
-              {!isTablet && (
-                <button
-                  type="button"
-                  onClick={() => setShowMobileFilterSheet(true)}
-                  title="เปิดแผ่นตั้งค่าตัวกรองแบบละเอียด"
-                  aria-label="ตั้งค่าตัวกรอง Match"
-                  className="w-10 h-10 min-h-[40px] min-w-[40px] rounded-xl bg-orange-50 border border-orange-200 text-orange-600 flex items-center justify-center active:scale-95 transition shrink-0"
-                >
-                  <IconSliders size={15} />
-                </button>
-              )}
-            </div>
+          {/* Full-width 2-Column Priority Selector (Prevents Mobile Text Overlap) */}
+          <div className="grid grid-cols-2 gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => {
+                setSortBy('smart');
+                setVibeWeight(15);
+              }}
+              className={`min-h-[38px] text-[11px] px-2.5 py-1.5 rounded-lg font-black active:scale-95 transition truncate ${
+                vibeWeight <= 40
+                  ? 'bg-teal-600 text-white shadow-sm'
+                  : 'text-slate-700 hover:text-slate-900'
+              }`}
+            >
+              เน้นใกล้ (ระยะทาง)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSortBy('smart');
+                setVibeWeight(80);
+              }}
+              className={`min-h-[38px] text-[11px] px-2.5 py-1.5 rounded-lg font-black active:scale-95 transition truncate ${
+                vibeWeight > 40
+                  ? 'bg-orange-500 text-white shadow-sm'
+                  : 'text-slate-700 hover:text-slate-900'
+              }`}
+            >
+              เน้น Vibe ตรงกัน
+            </button>
           </div>
 
         {/* Hard Limit Walking Distance Slider (0 - 500m MAX) */}
@@ -704,14 +704,14 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                         <h4 className="text-xs font-black text-slate-900 truncate">
                           {ride.hostName}
                         </h4>
-                        <span className="text-[9px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded whitespace-nowrap">
+                        <span className="text-[10px] font-extrabold text-slate-700 bg-slate-100 border border-slate-300 px-1.5 py-0.5 rounded whitespace-nowrap">
                           {ride.faculty}
                         </span>
                       </div>
-                      <div className="text-[9px] font-bold text-slate-500 flex items-center gap-1.5 mt-0.5 tabular-nums flex-wrap">
+                      <div className="text-[10px] font-extrabold text-slate-700 flex items-center gap-1.5 mt-1 tabular-nums flex-wrap">
                         <span className="truncate">{ride.vehicleLabel}</span>
                         {ride.licensePlate && (
-                          <span className="bg-slate-200 border border-slate-300 text-slate-800 px-1.5 py-0.5 rounded font-mono text-[8px] whitespace-nowrap shrink-0">
+                          <span className="plate-badge bg-slate-900 text-amber-300 border border-amber-400 px-2 py-0.5 rounded-md font-mono font-black text-[9px] whitespace-nowrap shrink-0 shadow-sm">
                             {ride.licensePlate}
                           </span>
                         )}
@@ -789,17 +789,17 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                 </div>
 
                 {/* Vibe Tags + Score Breakdown + Eco Impact on the Bottom Row */}
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <div className="flex flex-wrap gap-1">
                     {ride.vibes.map((tag) => {
                       const isShared = userProfile.vibes.includes(tag);
                       return (
                         <span
                           key={tag}
-                          className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${
+                          className={`text-[9px] px-2 py-0.5 rounded-full font-extrabold ${
                             isShared
                               ? 'bg-orange-500 text-white shadow-sm'
-                              : 'bg-slate-100 text-slate-600 border border-slate-200'
+                              : 'bg-slate-100 text-slate-800 border border-slate-300'
                           }`}
                         >
                           {isShared ? `✓ ${tag}` : tag}
@@ -808,19 +808,19 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                     })}
                   </div>
 
-                  <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 bg-slate-100/80 px-2 py-1 rounded-lg tabular-nums">
+                  <div className="flex items-center justify-between text-[10px] font-extrabold text-slate-800 bg-slate-100 border border-slate-300 px-2.5 py-1.5 rounded-xl tabular-nums">
                     <span>
                       ระยะทาง {match.routeScore}% • Vibe {match.vibeScore}%
                     </span>
-                    <span className="text-emerald-700 flex items-center gap-0.5 font-black">
-                      <IconLeaf size={10} />
+                    <span className="text-emerald-700 flex items-center gap-1 font-black">
+                      <IconLeaf size={11} />
                       <span>ช่วยลดคาร์บอน {ride.co2SavedKg} kg CO₂</span>
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Open 2D Seat Picker / Active Trip Status Button (min-h 44px for Native Touch) */}
+              {/* Open Seat Picker / Active Trip Status Button (10% Brand Accent for High Visibility) */}
               <button
                 type="button"
                 onClick={(e) => {
@@ -828,10 +828,10 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                   setInspectedRideId(ride.id);
                   onOpenSeatModal(ride);
                 }}
-                className={`w-full min-h-[44px] text-white text-xs font-black py-2.5 rounded-xl shadow-sm active:scale-95 transition flex items-center justify-center gap-1.5 ${
+                className={`w-full min-h-[44px] text-white text-xs font-black py-2.5 rounded-xl shadow-md active:scale-95 transition flex items-center justify-center gap-1.5 ${
                   isThisRideBooked
                     ? 'bg-emerald-600 hover:bg-emerald-700'
-                    : 'bg-slate-900 hover:bg-slate-800'
+                    : 'bg-orange-500 hover:bg-orange-600'
                 }`}
               >
                 {isThisRideBooked && activeBooking ? (

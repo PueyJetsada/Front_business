@@ -512,9 +512,9 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
                 </span>
               </div>
               {ride.licensePlate && (
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-slate-500 font-bold">ป้ายทะเบียน:</span>
-                  <span className="font-mono font-black text-slate-900 bg-slate-200 px-2 py-0.5 rounded text-[11px]">
+                  <span className="plate-badge font-mono font-black text-amber-300 bg-slate-900 border border-amber-400 px-2 py-0.5 rounded-md text-[11px] tracking-wider shadow-sm">
                     {ride.licensePlate}
                   </span>
                 </div>

@@ -69,6 +69,7 @@ const PHRASE_DICTIONARY: Array<[string, string]> = [
   ['ปลายทาง', 'Destination'],
   ['ทุกเส้นทาง', 'All Routes'],
   ['รูปแบบการจับคู่', 'Smart Match Priority'],
+  ['ตัวกรองละเอียด', 'Filter Options'],
   ['เน้นใกล้ (ระยะทาง)', 'Closest Drop-off'],
   ['เน้น Vibe ตรงกัน', 'Shared Vibe'],
   ['ระยะเดินสูงสุด (ไม่เกิน 500m):', 'Max Walk Limit (≤ 500m):'],
