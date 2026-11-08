@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  CAR_SEAT_POSITIONS,
+  getSeatPositionsForRide,
   QUICK_REVIEW_TAGS,
   type BookedRideDetail,
   type DiscountCoupon,
@@ -10,8 +10,12 @@ import {
 } from '../data/mockData';
 import {
   DriverBunnySvg,
+  IconChatBubble,
   IconCheck,
+  IconFacebook,
+  IconInstagram,
   IconLeaf,
+  IconLock,
   IconPin,
   IconShieldCheck,
   IconSteeringWheel,
@@ -34,6 +38,7 @@ interface SeatBookingModalProps {
   onConfirmBooking: (detail: BookedRideDetail) => void;
   onConfirmCancelBooking: (rideId: string) => void;
   onSwitchToActiveRide: () => void;
+  onOpenDriverChat?: (ride: RideHop) => void;
   onFinishTripWithReview: (
     ride: RideHop,
     booking: BookedRideDetail,
@@ -64,6 +69,7 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
   onConfirmBooking,
   onConfirmCancelBooking,
   onSwitchToActiveRide,
+  onOpenDriverChat,
   onFinishTripWithReview,
   initialStep,
   onClose,
@@ -72,8 +78,11 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
   const isBlockedByOtherRide =
     Boolean(activeBooking) && activeBooking?.rideId !== ride.id;
 
+  const isSuvLayout = ride.vehicleType === 'suv' || ride.totalSeats >= 6;
+  const seatPositions = getSeatPositionsForRide(ride);
+
   const firstFreeSeat =
-    CAR_SEAT_POSITIONS.find((s) => !ride.occupiedSeats.includes(s.id))?.id || 'F1';
+    seatPositions.find((s) => !ride.occupiedSeats.includes(s.id))?.id || 'F1';
 
   const [selectedSeats, setSelectedSeats] = useState<SeatId[]>(
     isThisRideBooked && activeBooking?.seatIds?.length
@@ -141,7 +150,7 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
     paymentMethods.find((p) => p.id === selectedPaymentId) || paymentMethods[0];
 
   const selectedSeatLabels = selectedSeats
-    .map((id) => CAR_SEAT_POSITIONS.find((s) => s.id === id)?.shortLabel || id)
+    .map((id) => seatPositions.find((s) => s.id === id)?.shortLabel || id)
     .join(', ');
 
   // 1. SINGLE ACTIVE BOOKING GUARD: Block booking if another trip is already active (Bottom Sheet on Mobile, Dialog on Tablet)
@@ -219,7 +228,12 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
   }
 
   const renderSeatButton = (seatId: SeatId) => {
-    const meta = CAR_SEAT_POSITIONS.find((s) => s.id === seatId)!;
+    const meta = seatPositions.find((s) => s.id === seatId) || {
+      id: seatId,
+      code: seatId,
+      label: seatId,
+      shortLabel: seatId,
+    };
     const isOccupied = ride.occupiedSeats.includes(seatId);
     const isSelected = selectedSeats.includes(seatId);
 
@@ -229,7 +243,7 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
         type="button"
         disabled={isOccupied}
         onClick={() => toggleSeat(seatId)}
-        className={`relative h-16 rounded-2xl border-2 flex flex-col items-center justify-center p-1.5 transition select-none ${
+        className={`relative h-14 rounded-2xl border-2 flex flex-col items-center justify-center p-1 transition select-none ${
           isOccupied
             ? 'bg-slate-200 border-slate-300 text-slate-400 cursor-not-allowed opacity-75'
             : isSelected
@@ -238,7 +252,7 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
         }`}
       >
         <span
-          className={`w-8 h-1.5 rounded-full mb-1 ${
+          className={`w-7 h-1.5 rounded-full mb-0.5 ${
             isOccupied
               ? 'bg-slate-400'
               : isSelected
@@ -249,7 +263,7 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
         <span className="text-[10px] font-black font-mono leading-none">
           {meta.code}
         </span>
-        <span className="text-[9px] font-bold mt-0.5 leading-tight text-center">
+        <span className="text-[8.5px] font-bold mt-0.5 leading-tight text-center">
           {meta.shortLabel}
         </span>
         <span className="text-[8px] font-extrabold mt-0.5 opacity-90">
@@ -384,33 +398,68 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
               </div>
             </div>
 
-            {/* 2D Top-Down Car Cabin Frame */}
-            <div className="mx-auto max-w-[265px] bg-slate-100 border-[3px] border-slate-700 rounded-t-[44px] rounded-b-[26px] p-3 shadow-inner space-y-2.5 relative">
-              <div className="h-5 bg-sky-100/90 border-2 border-slate-400 rounded-t-[28px] rounded-b-lg flex items-center justify-center text-[9px] font-black text-slate-600 tracking-wider">
-                หน้ารถ (ทิศทางเดินทาง ▲)
+            {/* 2D Top-Down Car Cabin Frame (Dynamic Sedan 2-Row vs SUV/MPV 3-Row) */}
+            <div className="mx-auto max-w-[275px] bg-slate-100 border-[3px] border-slate-700 rounded-t-[44px] rounded-b-[26px] p-3 shadow-inner space-y-2 relative">
+              <div className="h-5 bg-sky-100/90 border-2 border-slate-400 rounded-t-[28px] rounded-b-lg flex items-center justify-between px-2.5 text-[8.5px] font-black text-slate-700 tracking-wider">
+                <span>หน้ารถ (ทิศทางเดินทาง ▲)</span>
+                <span className="bg-slate-800 text-orange-400 px-1.5 py-0.5 rounded font-mono text-[8px]">
+                  {isSuvLayout ? 'SUV / 7 ที่นั่ง' : 'รถเก๋ง / 4 ที่นั่ง'}
+                </span>
               </div>
 
               <div className="grid grid-cols-2 gap-4 px-2">
                 {renderSeatButton('F1')}
 
-                <div className="h-16 rounded-2xl border-2 border-slate-700 bg-slate-800 text-white flex flex-col items-center justify-center p-1.5 select-none">
-                  <IconSteeringWheel size={16} className="text-orange-400 mb-0.5" />
-                  <span className="text-[10px] font-black">คนขับ</span>
-                  <span className="text-[8px] text-slate-300 font-bold truncate max-w-full">
+                <div className="h-14 rounded-2xl border-2 border-slate-700 bg-slate-800 text-white flex flex-col items-center justify-center p-1 select-none">
+                  <IconSteeringWheel size={15} className="text-orange-400 mb-0.5" />
+                  <span className="text-[10px] font-black leading-none">คนขับ</span>
+                  <span className="text-[8px] text-slate-300 font-bold truncate max-w-full mt-0.5">
                     {ride.hostName.split(' ')[0]}
                   </span>
                 </div>
               </div>
 
-              <div className="text-center text-[8px] font-bold text-slate-400 tracking-widest">
-                ─── แถวที่นั่งผู้โดยสารด้านหลัง ───
-              </div>
+              {isSuvLayout ? (
+                <>
+                  <div className="text-center text-[8px] font-bold text-slate-400 tracking-widest">
+                    ─── แถวที่ 2 • เบาะแถวกลาง (3 ที่นั่ง) ───
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {renderSeatButton('M1')}
+                    {renderSeatButton('M2')}
+                    {renderSeatButton('M3')}
+                  </div>
+                  <div className="text-center text-[8px] font-bold text-slate-400 tracking-widest">
+                    ─── แถวที่ 3 • เบาะหลังสุด (2 ที่นั่ง) ───
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 px-5">
+                    {renderSeatButton('B1')}
+                    {renderSeatButton('B2')}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-center text-[8px] font-bold text-slate-400 tracking-widest">
+                    ─── แถวที่ 2 • เบาะหลัง (3 ที่นั่ง) ───
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {renderSeatButton('R1')}
+                    {renderSeatButton('R2')}
+                    {renderSeatButton('R3')}
+                  </div>
+                </>
+              )}
+            </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                {renderSeatButton('R1')}
-                {renderSeatButton('R2')}
-                {renderSeatButton('R3')}
-              </div>
+            {/* Privacy Gate Notice for Social Contacts */}
+            <div className="bg-slate-900 text-slate-100 rounded-xl px-3 py-2 flex items-center justify-between gap-2 text-[10px] font-bold">
+              <span className="flex items-center gap-1.5 text-amber-300">
+                <IconLock size={13} className="shrink-0" />
+                <span>ช่องทางติดต่อ IG / Facebook และห้องแชทคนขับ</span>
+              </span>
+              <span className="text-[9.5px] font-black text-emerald-300 shrink-0">
+                ปลดล็อกหลังชำระเงิน
+              </span>
             </div>
 
             {/* Seat + Promo + Payment Selectors */}
@@ -572,7 +621,7 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
           </div>
         )}
 
-        {/* STEP 3: Active Trip Status View (with "เดินทางถึงจุดหมาย / จบทริป" button) */}
+        {/* STEP 3: Active Trip Status View (with Unlocked Social Contacts + Co-Hopper Chat + Finish Trip) */}
         {step === 'active-status' && activeBooking && (
           <div className="space-y-3">
             <div className="bg-emerald-50 border-2 border-emerald-500 rounded-2xl p-3 flex items-center justify-between">
@@ -601,6 +650,57 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
                   {ride.licensePlate || ride.vehicleLabel}
                 </div>
               </div>
+            </div>
+
+            {/* Unlocked Social Contacts + Direct Co-Hopper Chat Box */}
+            <div className="bg-slate-900 text-white rounded-2xl p-3 space-y-2.5 border border-slate-700">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10.5px] font-black text-emerald-400 flex items-center gap-1">
+                  <IconCheck size={13} />
+                  <span>ปลดล็อกช่องทางติดต่อคนขับและแชทในทริปแล้ว</span>
+                </span>
+                <span className="text-[9.5px] font-bold text-slate-300">
+                  {ride.hostName}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                {ride.ig && (
+                  <a
+                    href={`https://instagram.com/${ride.ig.replace('@', '')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[10.5px] bg-pink-600 hover:bg-pink-500 text-white px-2.5 py-1.5 rounded-full font-extrabold inline-flex items-center gap-1 transition shadow-sm"
+                  >
+                    <IconInstagram size={12} />
+                    <span>{ride.ig}</span>
+                  </a>
+                )}
+                {ride.facebook && (
+                  <a
+                    href={`https://facebook.com/search/top/?q=${encodeURIComponent(
+                      ride.facebook
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[10.5px] bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1.5 rounded-full font-extrabold inline-flex items-center gap-1 transition shadow-sm"
+                  >
+                    <IconFacebook size={12} />
+                    <span>{ride.facebook}</span>
+                  </a>
+                )}
+              </div>
+
+              {onOpenDriverChat && (
+                <button
+                  type="button"
+                  onClick={() => onOpenDriverChat(ride)}
+                  className="w-full py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition"
+                >
+                  <IconChatBubble size={14} />
+                  <span>💬 แชทเพื่อนร่วมทาง / นัดจุดรับกับ {ride.hostName.split(' ')[0]}</span>
+                </button>
+              )}
             </div>
 
             {/* Step-by-Step Price Breakdown + Eco Impact at the Bottom */}

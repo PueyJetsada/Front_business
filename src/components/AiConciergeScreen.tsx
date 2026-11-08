@@ -1,14 +1,22 @@
 import React, { useState } from 'react';
-import type { AutoBookWatcher, ChatMessage } from '../data/mockData';
+import type {
+  AutoBookWatcher,
+  BookedRideDetail,
+  ChatMessage,
+  RideHop,
+} from '../data/mockData';
 import {
   DriverBunnySvg,
+  IconChatBubble,
   IconCheck,
   IconClock,
   IconCrown,
+  IconFacebook,
+  IconInstagram,
+  IconLock,
   IconPin,
   IconShieldCheck,
   IconSparkle,
-  PassengerBunnySvg,
 } from './Icons';
 
 export type SlotStep = 'idle' | 'ask_seats' | 'ask_pickup' | 'ask_walk';
@@ -19,6 +27,14 @@ export interface DraftSlots {
   time: string;
   seats: number;
   maxWalkMeters: number;
+}
+
+interface FriendChatItem {
+  id: string;
+  sender: 'driver' | 'cohopper' | 'user';
+  senderName: string;
+  text: string;
+  time: string;
 }
 
 interface AiConciergeProps {
@@ -37,7 +53,39 @@ interface AiConciergeProps {
   onTriggerWatcherMatch: (watcherId: string) => void;
   activeSubTab: 'ai' | 'friend';
   onChangeSubTab: (tab: 'ai' | 'friend') => void;
+  rides?: RideHop[];
+  activeBooking?: BookedRideDetail | null;
+  selectedFriendRideId?: string | null;
+  onSelectFriendRideId?: (rideId: string | null) => void;
 }
+
+const DEFAULT_FRIEND_THREADS: Record<string, FriendChatItem[]> = {
+  'hop-z': [
+    {
+      id: 'fz-1',
+      sender: 'driver',
+      senderName: 'นาย Z (คนขับ)',
+      text: 'สวัสดีครับ! เดี๋ยวแวะรับหน้าตึก SIIT รังสิตครับ รถ Honda Civic สีเทาดำ ทะเบียน 1กข 9421 เปิดเพลง Indie รอเลย 🎵',
+      time: '09:36',
+    },
+    {
+      id: 'fz-2',
+      sender: 'cohopper',
+      senderName: 'มิน (เพื่อนร่วมทริป • R1)',
+      text: 'กำลังเดินลงจากตึกเรียนค่ะ อีก 2 นาทีถึงจุดนัดรับนะคะ',
+      time: '09:38',
+    },
+  ],
+  'hop-nicha': [
+    {
+      id: 'fn-1',
+      sender: 'driver',
+      senderName: 'ณิชา (คนขับ)',
+      text: 'สวัสดีค่า รถ Toyota Veloz SUV 7 ที่นั่ง (สีขาว) จอดรอตรงจุดรับหน้าตึก SIIT รังสิตนะคะ ใครถึงแล้วทักแจ้งได้เลยค่ะ 🚗✨',
+      time: '09:35',
+    },
+  ],
+};
 
 export const AiConciergeScreen: React.FC<AiConciergeProps> = ({
   isPremium,
@@ -55,11 +103,74 @@ export const AiConciergeScreen: React.FC<AiConciergeProps> = ({
   onTriggerWatcherMatch,
   activeSubTab,
   onChangeSubTab,
+  rides = [],
+  activeBooking = null,
+  selectedFriendRideId = null,
+  onSelectFriendRideId,
 }) => {
   const [inputText, setInputText] = useState('');
   const [confirmCancelWatcherId, setConfirmCancelWatcherId] = useState<string | null>(
     null
   );
+  const [internalFriendRideId, setInternalFriendRideId] = useState<string | null>(
+    null
+  );
+  const [friendInputText, setFriendInputText] = useState('');
+  const [friendThreads, setFriendThreads] = useState<
+    Record<string, FriendChatItem[]>
+  >(DEFAULT_FRIEND_THREADS);
+
+  const activeFriendRideId =
+    selectedFriendRideId !== undefined ? selectedFriendRideId : internalFriendRideId;
+
+  const setActiveFriendRideId = (id: string | null) => {
+    if (onSelectFriendRideId) {
+      onSelectFriendRideId(id);
+    } else {
+      setInternalFriendRideId(id);
+    }
+  };
+
+  const getThreadForRide = (ride: RideHop): FriendChatItem[] => {
+    if (friendThreads[ride.id]) return friendThreads[ride.id];
+    return [
+      {
+        id: `init-${ride.id}-1`,
+        sender: 'driver',
+        senderName: `${ride.hostName.split(' ')[0]} (คนขับ)`,
+        text: `สวัสดีครับ! ทริป ${ride.origin} → ${ride.destination} (${ride.vehicleLabel}) นัดเจอกันที่จุดรับได้เลยครับ ถึงแล้วทักมาในห้องแชทนี้ได้ทันทีครับ 🚗`,
+        time: '09:40',
+      },
+    ];
+  };
+
+  const handleSendFriendMessage = (ride: RideHop, rawText: string) => {
+    const trimmed = rawText.trim();
+    if (!trimmed) return;
+    const currentList = getThreadForRide(ride);
+    const userMessage: FriendChatItem = {
+      id: `u-${Date.now()}`,
+      sender: 'user',
+      senderName: 'คุณ (ผู้โดยสาร)',
+      text: trimmed,
+      time: '09:42',
+    };
+    const driverReply: FriendChatItem = {
+      id: `d-${Date.now() + 1}`,
+      sender: 'driver',
+      senderName: `${ride.hostName.split(' ')[0]} (คนขับ)`,
+      text: trimmed.includes('ถึง')
+        ? `รับทราบครับ! เห็นคุณตรงจุดนัดพบแล้ว เดี๋ยวขับ ${ride.vehicleLabel} เข้าไปเทียบรับเลยครับ 🚗💨`
+        : `โอเคเลยครับ! เจอกันที่จุดนัดรับหน้า ${ride.origin} นะครับ เปิดไฟฉุกเฉินรอครับ ✨`,
+      time: '09:42',
+    };
+
+    setFriendThreads((prev) => ({
+      ...prev,
+      [ride.id]: [...currentList, userMessage, driverReply],
+    }));
+    setFriendInputText('');
+  };
 
   const handleUserSend = (rawText: string) => {
     const text = rawText.trim();
@@ -303,52 +414,268 @@ export const AiConciergeScreen: React.FC<AiConciergeProps> = ({
           </div>
         </div>
 
-        {/* Tab 2: Companion Chat */}
-        {activeSubTab === 'friend' && (
-          <div className="flex-1 p-4 space-y-3 overflow-y-auto custom-scroll bg-slate-900">
-            <div className="text-xs font-black text-slate-200 mb-1">
-              ข้อความจากเพื่อนร่วมทางของคุณ
-            </div>
-            <div className="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 flex items-center gap-3">
-              <div className="w-11 h-11 bg-orange-500/20 rounded-full flex items-center justify-center border border-orange-500/40 relative shrink-0">
-                <DriverBunnySvg size={28} />
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-slate-900 rounded-full" />
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-baseline">
-                  <h4 className="text-xs font-black text-white">
-                    นาย Z (แซ็ค • SIIT CPE)
-                  </h4>
-                  <span className="text-[9px] text-orange-400 font-bold">
-                    96% Match
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-300 font-medium mt-0.5">
-                  "เดี๋ยวแวะรับหน้าตึก SIIT รังสิตครับ เปิดเพลง Indie รอเลย!"
-                </p>
-              </div>
-            </div>
+        {/* Tab 2: Companion Chat (Interactive List + Trip Group / Driver Chat Room) */}
+        {activeSubTab === 'friend' &&
+          (() => {
+            const chatRides: RideHop[] = [];
+            const bookedRideObj = activeBooking
+              ? rides.find((r) => r.id === activeBooking.rideId)
+              : null;
+            if (bookedRideObj) chatRides.push(bookedRideObj);
+            for (const r of rides) {
+              if (!chatRides.some((existing) => existing.id === r.id)) {
+                chatRides.push(r);
+              }
+            }
+            const displayRides = chatRides.slice(0, 4);
+            const activeRoomRide = activeFriendRideId
+              ? rides.find((r) => r.id === activeFriendRideId) ||
+                displayRides[0] ||
+                null
+              : null;
 
-            <div className="bg-slate-800 p-3.5 rounded-2xl border border-slate-700 flex items-center gap-3">
-              <div className="w-11 h-11 bg-orange-500/20 rounded-full flex items-center justify-center border border-orange-500/40 relative shrink-0">
-                <PassengerBunnySvg size={28} />
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-baseline">
-                  <h4 className="text-xs font-black text-white">
-                    ณิชา (Nicha • SIIT DE)
-                  </h4>
-                  <span className="text-[9px] text-slate-400 font-bold">
-                    5 นาทีที่แล้ว
+            if (activeRoomRide) {
+              const isRoomBooked = activeBooking?.rideId === activeRoomRide.id;
+              const thread = getThreadForRide(activeRoomRide);
+
+              return (
+                <div className="flex-1 flex flex-col overflow-hidden bg-slate-900">
+                  {/* Chat Room Header with Back Button & Vehicle/Privacy-Gated Social Info */}
+                  <div className="p-3 bg-slate-950 border-b border-slate-800 space-y-2 shrink-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveFriendRideId(null)}
+                        className="min-h-[36px] px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 text-[11px] font-black flex items-center gap-1.5 active:scale-95 transition shrink-0"
+                      >
+                        <span>← ย้อนกลับ</span>
+                      </button>
+
+                      <span
+                        className={`text-[9.5px] font-black px-2.5 py-0.5 rounded-full ${
+                          isRoomBooked
+                            ? 'bg-emerald-500 text-slate-950'
+                            : 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
+                        }`}
+                      >
+                        {isRoomBooked
+                          ? '✓ ทริปที่จองแล้ว • ห้องแชทกลุ่มทริป'
+                          : 'ห้องสอบถามคนขับ & เพื่อนร่วมทาง'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 bg-slate-900 p-2.5 rounded-2xl border border-slate-800">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-10 h-10 bg-orange-500/20 rounded-full flex items-center justify-center border border-orange-500/40 shrink-0">
+                          <DriverBunnySvg size={25} />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-black text-white truncate">
+                            {activeRoomRide.hostName} ({activeRoomRide.faculty})
+                          </div>
+                          <div className="text-[10px] text-slate-300 font-bold truncate">
+                            {activeRoomRide.origin} → {activeRoomRide.destination} •{' '}
+                            {activeRoomRide.vehicleLabel}
+                          </div>
+                        </div>
+                      </div>
+                      {activeRoomRide.licensePlate && (
+                        <span className="plate-badge bg-slate-950 text-amber-300 border border-amber-400 px-2 py-0.5 rounded-md font-mono font-black text-[9.5px] shrink-0">
+                          {activeRoomRide.licensePlate}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Privacy Gate for IG / Facebook inside Chat Header */}
+                    {isRoomBooked ? (
+                      <div className="flex flex-wrap items-center justify-between gap-1.5 px-1">
+                        <span className="text-[9.5px] font-black text-emerald-400 flex items-center gap-1">
+                          <IconCheck size={11} />
+                          <span>ช่องทางติดต่อคนขับ (ปลดล็อกหลังชำระเงินแล้ว):</span>
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {activeRoomRide.ig && (
+                            <a
+                              href={`https://instagram.com/${activeRoomRide.ig.replace(
+                                '@',
+                                ''
+                              )}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[9.5px] bg-pink-600 hover:bg-pink-500 text-white px-2.5 py-0.5 rounded-full font-black inline-flex items-center gap-1 transition"
+                            >
+                              <IconInstagram size={10} />
+                              <span>{activeRoomRide.ig}</span>
+                            </a>
+                          )}
+                          {activeRoomRide.facebook && (
+                            <a
+                              href={`https://facebook.com/search/top/?q=${encodeURIComponent(
+                                activeRoomRide.facebook
+                              )}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[9.5px] bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-0.5 rounded-full font-black inline-flex items-center gap-1 transition"
+                            >
+                              <IconFacebook size={10} />
+                              <span>Facebook</span>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between text-[9.5px] font-bold text-slate-400 px-1">
+                        <span className="flex items-center gap-1">
+                          <IconLock size={10} className="text-amber-400" />
+                          <span>
+                            ซ่อน IG และ Facebook ของคนขับจนกว่าจะจองและชำระเงินสำเร็จ
+                          </span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Messages Feed */}
+                  <div className="flex-1 p-3.5 space-y-2.5 overflow-y-auto custom-scroll">
+                    {thread.map((msg) => {
+                      const isUser = msg.sender === 'user';
+                      return (
+                        <div
+                          key={msg.id}
+                          className={`flex flex-col ${
+                            isUser ? 'items-end' : 'items-start'
+                          }`}
+                        >
+                          <span className="text-[9px] font-bold text-slate-400 mb-0.5 px-1">
+                            {msg.senderName} • {msg.time}
+                          </span>
+                          <div
+                            className={`max-w-[86%] p-3 rounded-2xl text-[11px] leading-relaxed ${
+                              isUser
+                                ? 'bg-orange-500 text-white font-bold rounded-tr-none shadow-md'
+                                : msg.sender === 'driver'
+                                  ? 'bg-slate-800 text-slate-100 border border-orange-500/40 rounded-tl-none'
+                                  : 'bg-slate-800/80 text-slate-200 border border-slate-700 rounded-tl-none'
+                            }`}
+                          >
+                            {msg.text}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Quick Coordination Replies */}
+                    <div className="pt-2 space-y-1.5">
+                      <div className="text-[9.5px] font-bold text-slate-400">
+                        ข้อความด่วนนัดหมายจุดรับ:
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          'กำลังเดินไปจุดนัดรับครับ อีก 2 นาทีถึง!',
+                          'ถึงจุดนัดพบแล้วครับ ยืนรอตรงป้ายหน้าตึก',
+                          'โอเคครับ เจอกันที่รถเลย ขอบคุณครับ!',
+                        ].map((quickText) => (
+                          <button
+                            key={quickText}
+                            type="button"
+                            onClick={() =>
+                              handleSendFriendMessage(activeRoomRide, quickText)
+                            }
+                            className="text-[10px] bg-slate-800 hover:bg-orange-500 text-orange-200 hover:text-white border border-orange-500/40 px-2.5 py-1.5 rounded-full font-bold active:scale-95 transition"
+                          >
+                            {quickText}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Message Input Form */}
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleSendFriendMessage(activeRoomRide, friendInputText);
+                    }}
+                    className="p-3 bg-slate-950 border-t border-slate-800 flex items-center gap-2 shrink-0"
+                  >
+                    <input
+                      type="text"
+                      value={friendInputText}
+                      onChange={(e) => setFriendInputText(e.target.value)}
+                      placeholder={`พิมพ์ข้อความถึง ${activeRoomRide.hostName.split(' ')[0]} และเพื่อนร่วมทริป...`}
+                      className="flex-1 min-h-[44px] bg-slate-800 border border-slate-700 text-white placeholder-slate-400 text-xs font-bold px-3.5 py-2.5 rounded-xl focus:border-orange-500"
+                    />
+                    <button
+                      type="submit"
+                      className="min-h-[44px] min-w-[68px] bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-black text-xs px-4 py-2.5 rounded-xl shadow-md transition shrink-0"
+                    >
+                      ส่งข้อความ
+                    </button>
+                  </form>
+                </div>
+              );
+            }
+
+            return (
+              <div className="flex-1 p-4 space-y-3 overflow-y-auto custom-scroll bg-slate-900">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-black text-slate-200">
+                    ห้องแชทคนขับและเพื่อนร่วมทางในทริป
+                  </div>
+                  <span className="text-[10px] font-bold text-orange-400">
+                    แตะที่รายชื่อเพื่อเข้าห้องแชท
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-300 font-medium mt-0.5">
-                  "มาหาร Grab กลับคอนโด B กันค่ะ เหลือว่างอีก 2 ที่นั่ง!"
-                </p>
+
+                {displayRides.map((r) => {
+                  const isBooked = activeBooking?.rideId === r.id;
+                  const thread = getThreadForRide(r);
+                  const lastMsg = thread[thread.length - 1];
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => setActiveFriendRideId(r.id)}
+                      className={`w-full text-left p-3.5 rounded-2xl border flex items-center gap-3 transition active:scale-[0.99] ${
+                        isBooked
+                          ? 'bg-emerald-950/50 border-2 border-emerald-500 hover:bg-emerald-950/70'
+                          : 'bg-slate-800 hover:bg-slate-800/80 border-slate-700 hover:border-orange-500/60'
+                      }`}
+                    >
+                      <div className="w-11 h-11 bg-orange-500/20 rounded-full flex items-center justify-center border border-orange-500/40 relative shrink-0">
+                        <DriverBunnySvg size={28} />
+                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-slate-900 rounded-full" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-center gap-2">
+                          <h4 className="text-xs font-black text-white truncate">
+                            {r.hostName} ({r.faculty})
+                          </h4>
+                          <span
+                            className={`text-[9px] font-black px-2 py-0.5 rounded-full shrink-0 ${
+                              isBooked
+                                ? 'bg-emerald-500 text-slate-950'
+                                : 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
+                            }`}
+                          >
+                            {isBooked ? 'ทริปปัจจุบันของคุณ' : 'เปิดแชท →'}
+                          </span>
+                        </div>
+                        <div className="text-[10px] font-bold text-teal-300 mt-0.5 truncate">
+                          {r.origin} → {r.destination} • {r.vehicleLabel}
+                        </div>
+                        {lastMsg && (
+                          <p className="text-[11px] text-slate-300 font-medium mt-1 truncate">
+                            "{lastMsg.text}"
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-            </div>
-          </div>
-        )}
+            );
+          })()}
 
         {/* Tab 1: AI Auto-Booking Assistant (Locked for Free User, Unlocked for HOP Premium) */}
         {activeSubTab === 'ai' && !isPremium && (
@@ -664,7 +991,14 @@ export const AiConciergeScreen: React.FC<AiConciergeProps> = ({
             <div className="text-[11px] font-black text-slate-300">
               เพื่อนร่วมทางที่ออนไลน์ล่าสุด
             </div>
-            <div className="bg-slate-900 p-3 rounded-2xl border border-slate-800 flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                onChangeSubTab('friend');
+                setActiveFriendRideId(activeBooking?.rideId || 'hop-z');
+              }}
+              className="w-full text-left bg-slate-900 hover:bg-slate-800 p-3 rounded-2xl border border-slate-800 hover:border-orange-500/60 flex items-center gap-2.5 active:scale-95 transition"
+            >
               <div className="w-9 h-9 bg-orange-500/20 rounded-full flex items-center justify-center border border-orange-500/40 shrink-0">
                 <DriverBunnySvg size={22} />
               </div>
@@ -676,7 +1010,8 @@ export const AiConciergeScreen: React.FC<AiConciergeProps> = ({
                   "เดี๋ยวแวะรับหน้าตึก SIIT รังสิตครับ"
                 </div>
               </div>
-            </div>
+              <IconChatBubble size={14} className="text-orange-400 shrink-0" />
+            </button>
           </div>
         </aside>
       )}

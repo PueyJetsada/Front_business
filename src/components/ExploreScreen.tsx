@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   CAMPUS_LOCATIONS,
-  CAR_SEAT_POSITIONS,
+  getSeatPositionsForRide,
   ROUTE_PRESETS,
   calculateSmartMatch,
   type BookedRideDetail,
@@ -11,12 +11,14 @@ import {
 } from '../data/mockData';
 import {
   DriverBunnySvg,
+  IconChatBubble,
   IconCheck,
   IconClock,
   IconCrown,
   IconFacebook,
   IconInstagram,
   IconLeaf,
+  IconLock,
   IconPin,
   IconShieldCheck,
   IconSliders,
@@ -42,11 +44,23 @@ interface ExploreScreenProps {
       | 'confirm-cancel'
       | 'trip-review'
   ) => void;
+  onOpenDriverChat: (ride: RideHop) => void;
   onOpenAiTab: () => void;
   onOpenCreateTab: () => void;
 }
 
 type SortByOption = 'smart' | 'vibe' | 'destination';
+
+const VIBE_FILTER_TAGS = [
+  'Indie',
+  'Game',
+  'สายชวนคุย',
+  'สายเงียบฟังเพลง',
+  'คาเฟ่',
+  'สายรีบไปเรียน',
+  'K-Pop',
+  'T-Pop',
+];
 
 export const ExploreScreen: React.FC<ExploreScreenProps> = ({
   rides,
@@ -55,6 +69,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
   activeBooking,
   isTablet = false,
   onOpenSeatModal,
+  onOpenDriverChat,
   onOpenAiTab,
   onOpenCreateTab,
 }) => {
@@ -68,7 +83,8 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
   // Hard Limit Guardrail slider: 0 to 500m (never > 500m)
   const [maxWalkLimit, setMaxWalkLimit] = useState<number>(350);
 
-  const [selectedVibeFilter, setSelectedVibeFilter] = useState<string | null>(null);
+  // Multi-Select Vibe Filter (Array of Strings)
+  const [selectedVibeFilters, setSelectedVibeFilters] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortByOption>('smart');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [showSortMenu, setShowSortMenu] = useState<boolean>(false);
@@ -77,17 +93,26 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
   const [inspectedRideId, setInspectedRideId] = useState<string>('hop-z');
   const [socialToast, setSocialToast] = useState<string | null>(null);
 
+  const toggleVibeFilter = (tag: string) => {
+    setSelectedVibeFilters((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
+
   const activeBookedRide = activeBooking
     ? rides.find((r) => r.id === activeBooking.rideId) || null
     : null;
 
-  // Filter rides by mode and route
+  // Filter rides by mode, route, and multi-select Vibes
   const routeScopedRides = rides.filter((r) => {
     if (r.mode !== bookingMode) return false;
     if (!showAllRoutes) {
       if (r.origin !== originFilter || r.destination !== destFilter) return false;
     }
-    if (selectedVibeFilter && !r.vibes.includes(selectedVibeFilter)) {
+    if (
+      selectedVibeFilters.length > 0 &&
+      !selectedVibeFilters.some((tag) => r.vibes.includes(tag))
+    ) {
       return false;
     }
     return true;
@@ -102,7 +127,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
     (r) => r.dropOffMeters > 500 || r.dropOffMeters > maxWalkLimit
   );
 
-  // Compute Smart Match % for each valid ride and sort
+  // Compute Smart Match % for each valid ride (incorporating all selected Vibes) and sort
   const enrichedRides = validRides
     .map((ride) => ({
       ride,
@@ -110,7 +135,8 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
         ride,
         userProfile.vibes,
         userProfile.faculty,
-        vibeWeight
+        vibeWeight,
+        selectedVibeFilters
       ),
     }))
     .sort((a, b) => {
@@ -173,7 +199,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
           </div>
         )}
 
-        {/* Active Trip Banner (Single Active Booking Status + Complete Trip Trigger) */}
+        {/* Active Trip Banner (Single Active Booking Status + Co-Hopper Chat + Complete Trip Trigger) */}
         {activeBooking && activeBookedRide && (
           <div className="bg-emerald-50 border-2 border-emerald-500 rounded-2xl p-3 shadow-sm space-y-2">
             <div className="flex items-center justify-between gap-2">
@@ -190,13 +216,22 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                   {activeBooking.seatIds
                     .map(
                       (id) =>
-                        CAR_SEAT_POSITIONS.find((s) => s.id === id)?.shortLabel ||
-                        id
+                        getSeatPositionsForRide(activeBookedRide).find(
+                          (s) => s.id === id
+                        )?.shortLabel || id
                     )
                     .join(', ')}{' '}
                   • ราคาสุทธิ ฿{activeBooking.netPaid}
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => onOpenDriverChat(activeBookedRide)}
+                className="min-h-[38px] px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-teal-300 border border-teal-400 font-black text-[10px] flex items-center gap-1.5 shrink-0 active:scale-95 transition shadow-sm"
+              >
+                <IconChatBubble size={13} />
+                <span>แชทเพื่อนร่วมทาง</span>
+              </button>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -464,44 +499,51 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
           )}
         </div>
 
-        {/* Vibe Quick Filter Chips */}
-        <div className="pt-0.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          <button
-            type="button"
-            onClick={() => setSelectedVibeFilter(null)}
-            className={`min-h-[34px] text-[10px] px-2.5 py-1 rounded-full font-black shrink-0 border active:scale-95 transition ${
-              selectedVibeFilter === null
-                ? 'bg-slate-900 text-white border-slate-900'
-                : 'bg-slate-100 text-slate-600 border-slate-200'
-            }`}
-          >
-            ทุก Vibe
-          </button>
-          {[
-            'Indie',
-            'Game',
-            'สายชวนคุย',
-            'สายเงียบฟังเพลง',
-            'คาเฟ่',
-            'สายรีบไปเรียน',
-            'K-Pop',
-            'T-Pop',
-          ].map((tag) => (
+        {/* Multi-Select Vibe Quick Filter Chips (Point 2) */}
+        <div className="pt-0.5 space-y-1">
+          <div className="flex items-center justify-between text-[9.5px] font-extrabold text-slate-600">
+            <span>กรองตาม Vibe (เลือกได้หลายอันพร้อมกัน):</span>
+            {selectedVibeFilters.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setSelectedVibeFilters([])}
+                className="text-orange-600 hover:underline font-black"
+              >
+                ล้างที่เลือก ({selectedVibeFilters.length})
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             <button
-              key={tag}
               type="button"
-              onClick={() =>
-                setSelectedVibeFilter(selectedVibeFilter === tag ? null : tag)
-              }
-              className={`min-h-[34px] text-[10px] px-2.5 py-1 rounded-full font-bold shrink-0 border active:scale-95 transition ${
-                selectedVibeFilter === tag
-                  ? 'bg-orange-500 text-white border-orange-500'
-                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-orange-300'
+              onClick={() => setSelectedVibeFilters([])}
+              className={`min-h-[34px] text-[10px] px-2.5 py-1 rounded-full font-black shrink-0 border active:scale-95 transition ${
+                selectedVibeFilters.length === 0
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : 'bg-slate-100 text-slate-600 border-slate-200'
               }`}
             >
-              {tag}
+              ทุก Vibe
             </button>
-          ))}
+            {VIBE_FILTER_TAGS.map((tag) => {
+              const isSelected = selectedVibeFilters.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => toggleVibeFilter(tag)}
+                  className={`min-h-[34px] text-[10px] px-2.5 py-1 rounded-full font-bold shrink-0 border active:scale-95 transition flex items-center gap-1 ${
+                    isSelected
+                      ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-orange-300'
+                  }`}
+                >
+                  {isSelected && <IconCheck size={10} />}
+                  <span>{tag}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -580,7 +622,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
               type="button"
               onClick={() => {
                 setMaxWalkLimit(350);
-                setSelectedVibeFilter(null);
+                setSelectedVibeFilters([]);
                 setShowAllRoutes(true);
               }}
               className="min-h-[44px] bg-slate-900 text-white text-xs font-black px-4 py-2 rounded-xl active:scale-95 transition"
@@ -619,13 +661,13 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
             : 0;
           const displaySeatsLeft = Math.max(0, ride.seatsLeft - bookedCount);
 
+          const seatPositions = getSeatPositionsForRide(ride);
           const bookedSeatNames =
             isThisRideBooked && activeBooking
               ? activeBooking.seatIds
                   .map(
                     (id) =>
-                      CAR_SEAT_POSITIONS.find((s) => s.id === id)?.shortLabel ||
-                      id
+                      seatPositions.find((s) => s.id === id)?.shortLabel || id
                   )
                   .join(', ')
               : '';
@@ -689,7 +731,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                   </div>
                 </div>
 
-                {/* Host Identity + Vehicle Model/Color/Plate (No Fuel Info) + Social Links */}
+                {/* Host Identity + Vehicle Model/Color/Plate + Privacy-Gated Social Links */}
                 <div className="space-y-1.5 min-w-0">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="w-10 h-10 rounded-full bg-orange-50 border-2 border-orange-200 flex items-center justify-center shrink-0">
@@ -719,8 +761,8 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                     </div>
                   </div>
 
-                  {/* Social Links (IG / FB) neatly aligned inside the card without overflowing */}
-                  {(ride.ig || ride.facebook) && (
+                  {/* Privacy Gate for Social Contacts (Point 9): Only show IG/FB & Co-Hopper Chat after booking */}
+                  {isThisRideBooked ? (
                     <div className="flex flex-wrap items-center gap-1.5 pl-12">
                       {ride.ig && (
                         <button
@@ -749,6 +791,24 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                           <span>Facebook</span>
                         </button>
                       )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenDriverChat(ride);
+                        }}
+                        className="inline-flex items-center gap-1 text-[9px] font-black bg-teal-600 hover:bg-teal-700 text-white px-2.5 py-0.5 rounded-full active:scale-95 transition shrink-0 shadow-sm"
+                      >
+                        <IconChatBubble size={9} className="shrink-0" />
+                        <span>แชทเพื่อนร่วมทาง</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="pl-12">
+                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
+                        <IconLock size={9} className="text-slate-500 shrink-0" />
+                        <span>แสดงช่องทางติดต่อหลังจองสำเร็จ</span>
+                      </span>
                     </div>
                   )}
                 </div>
@@ -908,17 +968,24 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
               </div>
             </div>
 
-            {/* Live 2D Car Seat Preview in Split-View */}
+            {/* Live 2D Car Seat Preview in Split-View (Dynamic Sedan vs SUV/MPV) */}
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2">
               <div className="flex items-center justify-between text-[10px] font-black text-slate-700">
-                <span>ผังที่นั่งในรถ</span>
+                <span>
+                  ผังที่นั่งในรถ (
+                  {inspectedEntry.ride.vehicleType === 'suv' ||
+                  inspectedEntry.ride.totalSeats >= 6
+                    ? 'SUV 7 ที่นั่ง'
+                    : 'รถเก๋ง 4 ที่นั่ง'}
+                  )
+                </span>
                 <span className="text-emerald-700">
                   ว่าง {inspectedEntry.ride.seatsLeft}/
                   {inspectedEntry.ride.totalSeats} ที่นั่ง
                 </span>
               </div>
 
-              <div className="mx-auto max-w-[230px] bg-slate-100 border-2 border-slate-700 rounded-t-[36px] rounded-b-[20px] p-2.5 space-y-2">
+              <div className="mx-auto max-w-[235px] bg-slate-100 border-2 border-slate-700 rounded-t-[36px] rounded-b-[20px] p-2.5 space-y-1.5">
                 <div className="h-4 bg-sky-100 border border-slate-400 rounded-t-[20px] rounded-b text-[8px] font-black text-slate-600 flex items-center justify-center">
                   หน้ารถ (ทิศทางเดินทาง ▲)
                 </div>
@@ -931,7 +998,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                         key={seatId}
                         type="button"
                         onClick={() => onOpenSeatModal(inspectedEntry.ride)}
-                        className={`h-14 rounded-xl border-2 flex flex-col items-center justify-center text-[9px] font-black transition ${
+                        className={`h-12 rounded-xl border-2 flex flex-col items-center justify-center text-[9px] font-black transition ${
                           isOcc
                             ? 'bg-slate-200 border-slate-300 text-slate-400'
                             : 'bg-emerald-50 border-emerald-400 text-emerald-950 hover:bg-orange-500 hover:text-white hover:border-orange-600'
@@ -944,34 +1011,90 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                       </button>
                     );
                   })}
-                  <div className="h-14 rounded-xl border-2 border-slate-700 bg-slate-800 text-white flex flex-col items-center justify-center text-[9px] font-black">
-                    <IconSteeringWheel size={14} className="text-orange-400" />
+                  <div className="h-12 rounded-xl border-2 border-slate-700 bg-slate-800 text-white flex flex-col items-center justify-center text-[9px] font-black">
+                    <IconSteeringWheel size={13} className="text-orange-400" />
                     <span>คนขับ</span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-1.5">
-                  {(['R1', 'R2', 'R3'] as const).map((seatId) => {
-                    const isOcc =
-                      inspectedEntry.ride.occupiedSeats.includes(seatId);
-                    const meta = CAR_SEAT_POSITIONS.find((s) => s.id === seatId)!;
-                    return (
-                      <button
-                        key={seatId}
-                        type="button"
-                        onClick={() => onOpenSeatModal(inspectedEntry.ride)}
-                        className={`h-14 rounded-xl border-2 flex flex-col items-center justify-center text-[9px] font-black transition ${
-                          isOcc
-                            ? 'bg-slate-200 border-slate-300 text-slate-400'
-                            : 'bg-emerald-50 border-emerald-400 text-emerald-950 hover:bg-orange-500 hover:text-white hover:border-orange-600'
-                        }`}
-                      >
-                        <span>{meta.code}</span>
-                        <span className="text-[8px]">{meta.shortLabel}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                {inspectedEntry.ride.vehicleType === 'suv' ||
+                inspectedEntry.ride.totalSeats >= 6 ? (
+                  <>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {(['M1', 'M2', 'M3'] as const).map((seatId) => {
+                        const isOcc =
+                          inspectedEntry.ride.occupiedSeats.includes(seatId);
+                        const meta = getSeatPositionsForRide(
+                          inspectedEntry.ride
+                        ).find((s) => s.id === seatId)!;
+                        return (
+                          <button
+                            key={seatId}
+                            type="button"
+                            onClick={() => onOpenSeatModal(inspectedEntry.ride)}
+                            className={`h-11 rounded-xl border-2 flex flex-col items-center justify-center text-[8.5px] font-black transition ${
+                              isOcc
+                                ? 'bg-slate-200 border-slate-300 text-slate-400'
+                                : 'bg-emerald-50 border-emerald-400 text-emerald-950 hover:bg-orange-500 hover:text-white hover:border-orange-600'
+                            }`}
+                          >
+                            <span>{meta.code}</span>
+                            <span className="text-[7.5px]">{meta.shortLabel}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 px-4">
+                      {(['B1', 'B2'] as const).map((seatId) => {
+                        const isOcc =
+                          inspectedEntry.ride.occupiedSeats.includes(seatId);
+                        const meta = getSeatPositionsForRide(
+                          inspectedEntry.ride
+                        ).find((s) => s.id === seatId)!;
+                        return (
+                          <button
+                            key={seatId}
+                            type="button"
+                            onClick={() => onOpenSeatModal(inspectedEntry.ride)}
+                            className={`h-11 rounded-xl border-2 flex flex-col items-center justify-center text-[8.5px] font-black transition ${
+                              isOcc
+                                ? 'bg-slate-200 border-slate-300 text-slate-400'
+                                : 'bg-emerald-50 border-emerald-400 text-emerald-950 hover:bg-orange-500 hover:text-white hover:border-orange-600'
+                            }`}
+                          >
+                            <span>{meta.code}</span>
+                            <span className="text-[7.5px]">{meta.shortLabel}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(['R1', 'R2', 'R3'] as const).map((seatId) => {
+                      const isOcc =
+                        inspectedEntry.ride.occupiedSeats.includes(seatId);
+                      const meta = getSeatPositionsForRide(
+                        inspectedEntry.ride
+                      ).find((s) => s.id === seatId)!;
+                      return (
+                        <button
+                          key={seatId}
+                          type="button"
+                          onClick={() => onOpenSeatModal(inspectedEntry.ride)}
+                          className={`h-12 rounded-xl border-2 flex flex-col items-center justify-center text-[9px] font-black transition ${
+                            isOcc
+                              ? 'bg-slate-200 border-slate-300 text-slate-400'
+                              : 'bg-emerald-50 border-emerald-400 text-emerald-950 hover:bg-orange-500 hover:text-white hover:border-orange-600'
+                          }`}
+                        >
+                          <span>{meta.code}</span>
+                          <span className="text-[8px]">{meta.shortLabel}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1021,7 +1144,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
         </aside>
       )}
 
-      {/* MOBILE BOTTOM SHEET: Match Priority & 500m Guardrail Settings */}
+      {/* MOBILE BOTTOM SHEET: Match Priority, 500m Guardrail & Multi-Select Vibe Settings */}
       {showMobileFilterSheet && (
         <div
           onClick={() => setShowMobileFilterSheet(false)}
@@ -1041,7 +1164,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                   ตั้งค่าตัวกรองการจับคู่ (Smart Match)
                 </h3>
                 <p className="text-[10px] text-slate-500 font-bold">
-                  ปรับน้ำหนักความสำคัญและเพดานระยะเดินสูงสุดไม่เกิน 500 เมตร
+                  ปรับน้ำหนักความสำคัญ ระยะเดิน และเลือก Vibe ได้หลายอันพร้อมกัน
                 </p>
               </div>
               <button
@@ -1103,6 +1226,41 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                 onChange={(e) => setMaxWalkLimit(Number(e.target.value))}
                 className="w-full hop-slider"
               />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs font-black text-slate-900">
+                <span>3. เลือก Vibe (เลือกได้หลายอัน)</span>
+                {selectedVibeFilters.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedVibeFilters([])}
+                    className="text-[10px] font-black text-orange-600"
+                  >
+                    ล้าง ({selectedVibeFilters.length})
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {VIBE_FILTER_TAGS.map((tag) => {
+                  const isSelected = selectedVibeFilters.includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => toggleVibeFilter(tag)}
+                      className={`text-[10px] px-2.5 py-1.5 rounded-full font-black border transition flex items-center gap-1 ${
+                        isSelected
+                          ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                          : 'bg-slate-50 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      {isSelected && <IconCheck size={10} />}
+                      <span>{tag}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             <button

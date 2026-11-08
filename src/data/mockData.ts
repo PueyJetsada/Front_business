@@ -1,20 +1,64 @@
 export type BookingMode = 'realtime' | 'prebook';
 export type UserRoleType = 'driver' | 'passenger' | 'both';
 export type HostType = 'driver' | 'cohopper';
-export type SeatId = 'F1' | 'R1' | 'R2' | 'R3';
+export type VehicleSeatType = 'sedan' | 'suv';
+export type SeatId =
+  | 'F1'
+  | 'R1'
+  | 'R2'
+  | 'R3'
+  | 'M1'
+  | 'M2'
+  | 'M3'
+  | 'B1'
+  | 'B2';
 
 export interface SeatPositionMeta {
   id: SeatId;
   code: string;
   label: string;
   shortLabel: string;
+  row: 1 | 2 | 3;
 }
 
+export const SEDAN_SEAT_POSITIONS: SeatPositionMeta[] = [
+  { id: 'F1', code: 'F1', label: 'ข้างคนขับ (หน้าซ้าย)', shortLabel: 'ข้างคนขับ', row: 1 },
+  { id: 'R1', code: 'R1', label: 'แถวหลังซ้าย (ริมหน้าต่าง)', shortLabel: 'หลังซ้าย', row: 2 },
+  { id: 'R2', code: 'R2', label: 'แถวหลังกลาง', shortLabel: 'หลังกลาง', row: 2 },
+  { id: 'R3', code: 'R3', label: 'แถวหลังขวา (ริมหน้าต่าง)', shortLabel: 'หลังขวา', row: 2 },
+];
+
+export const SUV_SEAT_POSITIONS: SeatPositionMeta[] = [
+  { id: 'F1', code: 'F1', label: 'ข้างคนขับ (หน้าซ้าย)', shortLabel: 'ข้างคนขับ', row: 1 },
+  { id: 'M1', code: 'M1', label: 'แถวกลางซ้าย (ริมหน้าต่าง)', shortLabel: 'กลางซ้าย', row: 2 },
+  { id: 'M2', code: 'M2', label: 'แถวกลาง (เบาะกลาง)', shortLabel: 'เบาะกลาง', row: 2 },
+  { id: 'M3', code: 'M3', label: 'แถวกลางขวา (ริมหน้าต่าง)', shortLabel: 'กลางขวา', row: 2 },
+  { id: 'B1', code: 'B1', label: 'แถวหลังสุดซ้าย (แถว 3)', shortLabel: 'หลังสุดซ้าย', row: 3 },
+  { id: 'B2', code: 'B2', label: 'แถวหลังสุดขวา (แถว 3)', shortLabel: 'หลังสุดขวา', row: 3 },
+];
+
 export const CAR_SEAT_POSITIONS: SeatPositionMeta[] = [
-  { id: 'F1', code: 'F1', label: 'ข้างคนขับ (หน้าซ้าย)', shortLabel: 'ข้างคนขับ' },
-  { id: 'R1', code: 'R1', label: 'แถวหลังซ้าย (ริมหน้าต่าง)', shortLabel: 'หลังซ้าย' },
-  { id: 'R2', code: 'R2', label: 'แถวหลังกลาง', shortLabel: 'หลังกลาง' },
-  { id: 'R3', code: 'R3', label: 'แถวหลังขวา (ริมหน้าต่าง)', shortLabel: 'หลังขวา' },
+  ...SEDAN_SEAT_POSITIONS,
+  ...SUV_SEAT_POSITIONS.filter((s) => s.id !== 'F1'),
+];
+
+export function getSeatPositionsForRide(
+  ride: Pick<RideHop, 'vehicleType' | 'totalSeats'>
+): SeatPositionMeta[] {
+  if (ride.vehicleType === 'suv' || ride.totalSeats > 4) {
+    return SUV_SEAT_POSITIONS;
+  }
+  return SEDAN_SEAT_POSITIONS;
+}
+
+export const VEHICLE_COLOR_OPTIONS: string[] = [
+  'สีขาว',
+  'สีดำ',
+  'สีเทา',
+  'สีเงิน',
+  'สีแดง',
+  'สีน้ำเงิน',
+  'สีครีม',
 ];
 
 export interface VibeCategory {
@@ -35,6 +79,7 @@ export interface UserProfile {
   carBrand: string;
   carColor: string;
   carLicense: string;
+  carType?: VehicleSeatType;
   womenOnlyDefault: boolean;
 }
 
@@ -44,6 +89,8 @@ export interface RideHop {
   faculty: string;
   rating: number;
   hostType: HostType;
+  vehicleType?: VehicleSeatType;
+  carColor?: string;
   vehicleLabel: string;
   licensePlate?: string;
   origin: string;
@@ -268,6 +315,7 @@ export const INITIAL_USER_PROFILE: UserProfile = {
   carBrand: 'Honda Civic FE',
   carColor: 'สีเทาโซนิค',
   carLicense: 'กข 1234',
+  carType: 'sedan',
   womenOnlyDefault: false,
 };
 
@@ -278,6 +326,8 @@ export const INITIAL_RIDES: RideHop[] = [
     faculty: 'SIIT • CPE ปี 3',
     rating: 4.9,
     hostType: 'driver',
+    vehicleType: 'sedan',
+    carColor: 'สีขาว',
     vehicleLabel: 'BYD Dolphin • สีขาว',
     licensePlate: '1กฒ 8899',
     origin: 'SIIT รังสิต',
@@ -305,6 +355,8 @@ export const INITIAL_RIDES: RideHop[] = [
     faculty: 'SIIT • IE ปี 4',
     rating: 4.8,
     hostType: 'driver',
+    vehicleType: 'sedan',
+    carColor: 'สีเทา',
     vehicleLabel: 'Honda Civic • สีเทา',
     licensePlate: 'กข 1234',
     origin: 'SIIT รังสิต',
@@ -331,8 +383,10 @@ export const INITIAL_RIDES: RideHop[] = [
     hostName: 'ณิชา (Nicha)',
     faculty: 'SIIT • DE ปี 2',
     rating: 5.0,
-    hostType: 'cohopper',
-    vehicleLabel: 'หารรถ GrabCar • สีเงิน',
+    hostType: 'driver',
+    vehicleType: 'suv',
+    carColor: 'สีขาว',
+    vehicleLabel: 'Toyota Veloz (SUV 7 ที่นั่ง) • สีขาว',
     licensePlate: 'ทศ 9421',
     origin: 'SIIT รังสิต',
     destination: 'คอนโด B',
@@ -341,15 +395,16 @@ export const INITIAL_RIDES: RideHop[] = [
     dropOffMeters: 220,
     mode: 'realtime',
     departMinutes: 4,
-    seatsLeft: 2,
-    totalSeats: 4,
-    occupiedSeats: ['R1', 'R2'],
+    seatsLeft: 4,
+    totalSeats: 6,
+    occupiedSeats: ['M2', 'B2'],
     baseFare: 32,
     commissionFee: 4,
     vibes: ['K-Pop', 'สายกิน', 'อนิเมะ'],
     ig: '@nicha.de26',
-    bioNote: 'ตกรถตู้มธ. หาคนหาร Grab กลับโซนคอนโด B ตอนนี้เลยค่ะ ประหยัดกว่านั่งคนเดียวครึ่งๆ',
-    co2SavedKg: 1.1,
+    facebook: 'fb.com/nicha.siit',
+    bioNote: 'ขับรถ SUV 7 ที่นั่ง (ผังผู้โดยสาร 6 ที่นั่ง 3 แถว) กลับโซนคอนโด B ตอนนี้เลยค่ะ นั่งสบายแอร์เย็น!',
+    co2SavedKg: 1.6,
   },
   {
     id: 'hop-c-guardrail',
@@ -357,6 +412,8 @@ export const INITIAL_RIDES: RideHop[] = [
     faculty: 'SIIT • ME ปี 4',
     rating: 4.7,
     hostType: 'driver',
+    vehicleType: 'sedan',
+    carColor: 'สีแดง',
     vehicleLabel: 'Mazda 2 • สีแดง',
     licensePlate: '9กพ 4412',
     origin: 'SIIT รังสิต',
@@ -383,6 +440,8 @@ export const INITIAL_RIDES: RideHop[] = [
     faculty: 'SIIT • CPE ปี 4',
     rating: 4.9,
     hostType: 'driver',
+    vehicleType: 'sedan',
+    carColor: 'สีขาว',
     vehicleLabel: 'Toyota Yaris Ativ • สีขาว',
     licensePlate: '4ขท 5012',
     origin: 'SIIT รังสิต',
@@ -408,8 +467,10 @@ export const INITIAL_RIDES: RideHop[] = [
     hostName: 'มินนี่ (Minnie)',
     faculty: 'TBS • มธ. ปี 2',
     rating: 5.0,
-    hostType: 'cohopper',
-    vehicleLabel: 'หารรถ Bolt • สีดำ',
+    hostType: 'driver',
+    vehicleType: 'sedan',
+    carColor: 'สีดำ',
+    vehicleLabel: 'Honda City Hatchback • สีดำ',
     licensePlate: '7กอ 3108',
     origin: 'SIIT รังสิต',
     destination: 'คอนโด B',
@@ -425,7 +486,8 @@ export const INITIAL_RIDES: RideHop[] = [
     commissionFee: 4,
     vibes: ['T-Pop', 'K-Pop', 'สายชวนคุย', 'คาเฟ่'],
     ig: '@minnie.tbs',
-    bioNote: 'เปิดตี้หาร Bolt ล่วงหน้าตอน 09:00 น. ไปคอนโด B จุดส่งตรงเป๊ะ 0 เมตร',
+    facebook: 'fb.com/minnie.tu',
+    bioNote: 'ขับรถกลับคอนโด B รอบ 09:00 น. จอดส่งหน้าล็อบบี้ตรงเป๊ะ 0 เมตร',
     co2SavedKg: 1.1,
   },
   {
@@ -434,7 +496,9 @@ export const INITIAL_RIDES: RideHop[] = [
     faculty: 'SIIT • MT ปี 3',
     rating: 4.8,
     hostType: 'driver',
-    vehicleLabel: 'ORA Good Cat • สีครีม',
+    vehicleType: 'suv',
+    carColor: 'สีเงิน',
+    vehicleLabel: 'Mitsubishi Xpander (SUV 7 ที่นั่ง) • สีเงิน',
     licensePlate: '3ขล 9090',
     origin: 'TU Dome',
     destination: 'SIIT บางกระดี่',
@@ -443,14 +507,14 @@ export const INITIAL_RIDES: RideHop[] = [
     dropOffMeters: 80,
     mode: 'prebook',
     scheduleLabel: 'พรุ่งนี้ • 08:40 น.',
-    seatsLeft: 2,
-    totalSeats: 4,
-    occupiedSeats: ['F1', 'R2'],
+    seatsLeft: 4,
+    totalSeats: 6,
+    occupiedSeats: ['F1', 'M2'],
     baseFare: 42,
     commissionFee: 5,
     vibes: ['Hip-Hop', 'RoV', 'สายตี้', 'สายกิน'],
     ig: '@ken_mt.tu',
-    bioNote: 'ออกจาก TU Dome ไปบางกระดี่ แอร์เย็น นั่งสบาย มาหารค่ารถกันครับ',
+    bioNote: 'ขับรถ SUV 7 ที่นั่งออกจาก TU Dome ไปบางกระดี่ แอร์เย็น นั่งสบาย มาหารค่ารถกันครับ',
     co2SavedKg: 3.1,
   },
 ];
@@ -468,7 +532,8 @@ export function calculateSmartMatch(
   ride: RideHop,
   userVibes: string[],
   userFaculty: string,
-  vibeWeightPercent: number
+  vibeWeightPercent: number,
+  activeVibeFilters: string[] = []
 ): MatchBreakdown {
   // 1. Pickup proximity score (0 - 100)
   const pickupScore = Math.max(40, Math.round(100 - ride.pickupMeters * 0.35));
@@ -481,9 +546,20 @@ export function calculateSmartMatch(
 
   const routeScore = Math.round(dropOffScore * 0.8 + pickupScore * 0.2);
 
-  // 3. Vibe & Faculty similarity score (0 - 100)
-  const sharedVibes = ride.vibes.filter((tag) => userVibes.includes(tag));
-  const denom = Math.max(1, Math.min(ride.vibes.length, Math.max(3, userVibes.length)));
+  // 3. Vibe & Faculty similarity score (0 - 100), combining user profile Vibes + active multi-select Vibe filters
+  const targetVibes =
+    activeVibeFilters.length > 0
+      ? Array.from(new Set([...activeVibeFilters, ...userVibes]))
+      : userVibes;
+  const sharedVibes = ride.vibes.filter((tag) => targetVibes.includes(tag));
+  const filterHits =
+    activeVibeFilters.length > 0
+      ? activeVibeFilters.filter((tag) => ride.vibes.includes(tag)).length
+      : 0;
+  const filterRatio =
+    activeVibeFilters.length > 0 ? filterHits / activeVibeFilters.length : 0;
+
+  const denom = Math.max(1, Math.min(ride.vibes.length, Math.max(3, targetVibes.length)));
   const rawTagRatio = sharedVibes.length / denom;
   const sameInstitute =
     ride.faculty.toLowerCase().includes('siit') &&
@@ -492,7 +568,14 @@ export function calculateSmartMatch(
     ride.faculty.toLowerCase().includes('cpe') &&
     userFaculty.toLowerCase().includes('cpe');
 
-  const baseVibe = Math.round(rawTagRatio * 82) + (sameInstitute ? 12 : 6) + (sameMajor ? 4 : 0);
+  const baseVibe =
+    activeVibeFilters.length > 0
+      ? Math.round(filterRatio * 55 + rawTagRatio * 30) +
+        (sameInstitute ? 10 : 5) +
+        (sameMajor ? 3 : 0)
+      : Math.round(rawTagRatio * 82) +
+        (sameInstitute ? 12 : 6) +
+        (sameMajor ? 4 : 0);
   const vibeScore = Math.min(98, Math.max(32, baseVibe));
 
   const distWeight = 100 - vibeWeightPercent;

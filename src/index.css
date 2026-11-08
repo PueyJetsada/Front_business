@@ -320,6 +320,22 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
+/* Hide browser number input spinners for native iOS/Android numeric keypad feel */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button,
+input.no-spinner::-webkit-inner-spin-button,
+input.no-spinner::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+input[type='number'],
+input.no-spinner {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 @keyframes bounce-hop {
   0%,
   100% {

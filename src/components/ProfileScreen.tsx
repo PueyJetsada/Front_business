@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import {
+  VEHICLE_COLOR_OPTIONS,
   VIBE_CATEGORIES,
   type UserProfile,
   type UserRoleType,
+  type VehicleSeatType,
 } from '../data/mockData';
 import {
   DriverBunnySvg,
@@ -259,12 +261,45 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </div>
           </div>
 
-          {/* Driver Vehicle Info when role includes driver (Model, Color, Plate ONLY — NO Fuel Type) */}
+          {/* Driver Vehicle Info when role includes driver (Model, Color, Plate, Type) */}
           {(profile.role === 'driver' || profile.role === 'both') && (
             <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm space-y-2.5">
-              <h3 className="text-xs font-black text-slate-900">
-                ข้อมูลรถยนต์สำหรับรับเพื่อนร่วมทาง
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-black text-slate-900">
+                  ข้อมูลรถยนต์สำหรับรับเพื่อนร่วมทาง
+                </h3>
+                <span className="plate-badge font-mono font-black text-[10px] bg-slate-900 text-amber-300 border border-amber-400 px-2 py-0.5 rounded-md">
+                  {profile.carLicense || 'กข 1234'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1.5">
+                {(
+                  [
+                    { key: 'sedan', label: 'รถเก๋ง / Sedan (4 ที่นั่ง)' },
+                    { key: 'suv', label: 'รถ SUV / MPV (6 ที่นั่ง)' },
+                  ] as { key: VehicleSeatType; label: string }[]
+                ).map((vt) => {
+                  const active = (profile.carType || 'sedan') === vt.key;
+                  return (
+                    <button
+                      key={vt.key}
+                      type="button"
+                      onClick={() =>
+                        onChangeProfile({ ...profile, carType: vt.key })
+                      }
+                      className={`min-h-[38px] px-2.5 py-1.5 rounded-xl text-[10px] font-black border transition ${
+                        active
+                          ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-orange-300'
+                      }`}
+                    >
+                      {vt.label}
+                    </button>
+                  );
+                })}
+              </div>
+
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <span className="text-[10px] font-bold text-slate-500 block mb-0.5">
@@ -281,7 +316,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </div>
                 <div>
                   <span className="text-[10px] font-bold text-slate-500 block mb-0.5">
-                    สีรถ
+                    สีรถ (Vehicle Color)
                   </span>
                   <input
                     type="text"
@@ -289,6 +324,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     onChange={(e) =>
                       onChangeProfile({ ...profile, carColor: e.target.value })
                     }
+                    placeholder="เช่น สีขาว"
                     className="w-full min-h-[42px] bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-800"
                   />
                 </div>
@@ -302,9 +338,32 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     onChange={(e) =>
                       onChangeProfile({ ...profile, carLicense: e.target.value })
                     }
-                    className="w-full min-h-[42px] bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-800"
+                    className="w-full min-h-[42px] bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-800 font-mono"
                   />
                 </div>
+              </div>
+
+              {/* Quick Vehicle Color Chips */}
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {VEHICLE_COLOR_OPTIONS.map((colorOpt) => {
+                  const isSelected = profile.carColor.trim() === colorOpt;
+                  return (
+                    <button
+                      key={colorOpt}
+                      type="button"
+                      onClick={() =>
+                        onChangeProfile({ ...profile, carColor: colorOpt })
+                      }
+                      className={`min-h-[28px] px-2.5 py-0.5 rounded-full text-[10px] font-black border transition ${
+                        isSelected
+                          ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                          : 'bg-slate-100 text-slate-700 border-slate-200 hover:border-orange-300'
+                      }`}
+                    >
+                      {colorOpt}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

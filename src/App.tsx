@@ -8,12 +8,16 @@ import { CreateHopScreen } from './components/CreateHopScreen';
 import { ExploreScreen } from './components/ExploreScreen';
 import { applyDomLanguage, type AppLang } from './utils/i18n';
 import {
+  CampusHopLogoSvg,
   DriverBunnySvg,
   HoppingBunnySvg,
   IconCar,
+  IconChatBubble,
   IconCheck,
   IconCrown,
+  IconFacebook,
   IconHistory,
+  IconInstagram,
   IconLeaf,
   IconMoon,
   IconPin,
@@ -29,7 +33,7 @@ import {
 import { ProfileScreen } from './components/ProfileScreen';
 import { SeatBookingModal } from './components/SeatBookingModal';
 import {
-  CAR_SEAT_POSITIONS,
+  getSeatPositionsForRide,
   INITIAL_DISCOUNT_COUPONS,
   INITIAL_PAYMENT_METHODS,
   INITIAL_RIDES,
@@ -179,8 +183,11 @@ export default function App() {
   const [coupons, setCoupons] = useState<DiscountCoupon[]>(INITIAL_DISCOUNT_COUPONS);
   const [selectedCouponCode, setSelectedCouponCode] = useState<string | null>('HOP15');
 
-  // Shared AI Assistant State (Single Source of Truth across the entire app)
+  // Shared AI Assistant & Companion Chat State (Single Source of Truth across the entire app)
   const [aiSubTab, setAiSubTab] = useState<'ai' | 'friend'>('ai');
+  const [selectedFriendRideId, setSelectedFriendRideId] = useState<string | null>(
+    null
+  );
   const [aiMessages, setAiMessages] = useState<ChatMessage[]>([
     {
       id: 'm-welcome',
@@ -242,11 +249,19 @@ export default function App() {
     setActiveSeatModalRideId(ride.id);
   };
 
+  const handleOpenDriverChat = (ride: RideHop) => {
+    setActiveSeatModalRideId(null);
+    setActiveModalInitialStep(undefined);
+    setSelectedFriendRideId(ride.id);
+    setAiSubTab('friend');
+    setScreen('ai');
+  };
+
   const handleConfirmBooking = (detail: BookedRideDetail) => {
     setActiveBooking(detail);
     setActiveSeatModalRideId(null);
     setActiveModalInitialStep(undefined);
-    showToast('จองที่นั่งสำเร็จ! คุณมีทริปที่กำลังดำเนินการอยู่ 1 รอบ');
+    showToast('จองที่นั่งสำเร็จ! ปลดล็อกช่องทางติดต่อ IG/FB และห้องแชทคนขับแล้ว');
   };
 
   const handleConfirmCancelBooking = () => {
@@ -267,7 +282,10 @@ export default function App() {
       paymentMethods.find((p) => p.id === booking.paymentMethodId)?.name ||
       'สแกนจ่าย PromptPay QR';
     const seatLabel = booking.seatIds
-      .map((id) => CAR_SEAT_POSITIONS.find((s) => s.id === id)?.shortLabel || id)
+      .map(
+        (id) =>
+          getSeatPositionsForRide(ride).find((s) => s.id === id)?.shortLabel || id
+      )
       .join(', ');
 
     const newCompletedRecord: CompletedTripRecord = {
@@ -364,17 +382,19 @@ export default function App() {
     <div className="p-6 flex-1 flex flex-col items-center justify-center bg-white relative overflow-hidden">
       {splashPhase === 'hopping' ? (
         <div className="flex flex-col items-center animate-[bounce-hop_1.2s_ease-in-out_infinite]">
-          <HoppingBunnySvg width={84} height={104} />
-          <h2 className="mt-4 text-xl font-black text-orange-500 animate-pulse tracking-widest">
+          <CampusHopLogoSvg size={88} className="mb-3 drop-shadow-lg" />
+          <HoppingBunnySvg width={72} height={90} />
+          <h2 className="mt-3 text-xl font-black text-orange-500 animate-pulse tracking-widest">
             CAMPUSHOP
           </h2>
           <p className="text-xs font-bold text-slate-500 mt-1">
-            แพลตฟอร์มหารค่ารถและหาเพื่อนร่วมทาง SIIT & มธ.
+            แพลตฟอร์มหารค่ารถและหาเพื่อนร่วมทางมหาวิทยาลัย
           </p>
         </div>
       ) : (
         <div className="flex flex-col items-center animate-[zoom-smile_0.8s_ease-out_forwards]">
-          <SmilingBunnySvg size={136} />
+          <CampusHopLogoSvg size={96} className="mb-3 drop-shadow-xl" />
+          <SmilingBunnySvg size={112} />
           <h2 className="mt-3 text-2xl font-black text-orange-500">พร้อมออกเดินทาง!</h2>
         </div>
       )}
@@ -405,15 +425,15 @@ export default function App() {
             type="button"
             onClick={() => setScreen('splash')}
             title="ดูแอนิเมชันเปิดตัว"
-            className="mx-auto flex justify-center text-orange-500 mb-2 min-h-[44px] min-w-[44px]"
+            className="mx-auto flex items-center justify-center gap-2 text-orange-500 mb-2.5 min-h-[44px] min-w-[44px]"
           >
-            <SmilingBunnySvg size={88} />
+            <CampusHopLogoSvg size={76} className="drop-shadow-md" />
           </button>
-          <h1 className="text-3xl font-black text-orange-500 tracking-tight font-display">
-            CAMPUSHOP
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight font-display">
+            CAMPUS<span className="text-orange-500">HOP</span>
           </h1>
           <p className="text-xs font-bold text-slate-500 mt-1">
-            หารค่ารถและหาเพื่อนร่วมทาง SIIT ม.ธรรมศาสตร์
+            แพลตฟอร์มหารค่ารถและหาเพื่อนร่วมทางนักศึกษา
           </p>
         </div>
 
@@ -527,7 +547,7 @@ export default function App() {
           panX: 28,
           panY: 16,
           polyline: '55,195 55,120 142,120 142,108',
-          shortType: 'MG4 • สีส้ม',
+          shortType: 'Civic • สีเทาดำ',
         };
       }
       if (rideId === 'hop-y') {
@@ -537,7 +557,7 @@ export default function App() {
           panX: -42,
           panY: 54,
           polyline: '55,195 55,120 160,120 160,64 222,58',
-          shortType: 'Civic • สีขาว',
+          shortType: 'MG4 • สีส้ม',
         };
       }
       if (rideId === 'hop-nicha') {
@@ -547,7 +567,7 @@ export default function App() {
           panX: -32,
           panY: -22,
           polyline: '55,195 55,156 210,156',
-          shortType: 'หารรถ GrabCar',
+          shortType: 'Veloz SUV • สีขาว',
         };
       }
       return {
@@ -1226,7 +1246,7 @@ export default function App() {
           สถานะทริปและประวัติการเดินทาง
         </h2>
 
-        {/* Single Active Trip Card (with Complete Trip & Cancel Triggers) */}
+        {/* Single Active Trip Card (with Unlocked Social Contacts + Co-Hopper Chat + Complete Trip & Cancel Triggers) */}
         {activeBooking && activeBookedRideObj && (
           <div className="bg-white p-3.5 rounded-2xl shadow-sm border-2 border-emerald-500 space-y-2.5">
             <div className="flex justify-between items-center tabular-nums">
@@ -1248,10 +1268,54 @@ export default function App() {
               {activeBooking.seatIds
                 .map(
                   (id) =>
-                    CAR_SEAT_POSITIONS.find((s) => s.id === id)?.shortLabel || id
+                    getSeatPositionsForRide(activeBookedRideObj).find(
+                      (s) => s.id === id
+                    )?.shortLabel || id
                 )
                 .join(', ')}{' '}
               • {activeBookedRideObj.vehicleLabel}
+            </div>
+
+            {/* Unlocked Social Contacts + Co-Hopper Chat Button (Points 8 & 9) */}
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900 text-white p-2.5 rounded-xl">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {activeBookedRideObj.ig && (
+                  <a
+                    href={`https://instagram.com/${activeBookedRideObj.ig.replace(
+                      '@',
+                      ''
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[9.5px] bg-pink-600 hover:bg-pink-500 text-white px-2.5 py-1 rounded-full font-extrabold inline-flex items-center gap-1 transition"
+                  >
+                    <IconInstagram size={10} />
+                    <span>{activeBookedRideObj.ig}</span>
+                  </a>
+                )}
+                {activeBookedRideObj.facebook && (
+                  <a
+                    href={`https://facebook.com/search/top/?q=${encodeURIComponent(
+                      activeBookedRideObj.facebook
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[9.5px] bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded-full font-extrabold inline-flex items-center gap-1 transition"
+                  >
+                    <IconFacebook size={10} />
+                    <span>Facebook</span>
+                  </a>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleOpenDriverChat(activeBookedRideObj)}
+                className="min-h-[34px] px-3 py-1 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-[10px] flex items-center gap-1 active:scale-95 transition shadow-sm"
+              >
+                <IconChatBubble size={12} />
+                <span>แชทเพื่อนร่วมทาง</span>
+              </button>
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-1">
@@ -1442,22 +1506,15 @@ export default function App() {
               className="w-[228px] lg:w-[244px] bg-white border-r border-slate-200 flex flex-col justify-between p-3.5 shrink-0 z-20"
             >
               <div className="space-y-4">
-                {/* Brand Logo Header in Sidebar */}
+                {/* Brand Logo Header in Sidebar (Clean Logo & Brand Name Only - Point 3 & 10) */}
                 <button
                   type="button"
                   onClick={() => setScreen('explore')}
                   className="w-full flex items-center gap-2.5 text-left p-2 rounded-2xl hover:bg-orange-50/60 transition"
                 >
-                  <div className="w-10 h-10 rounded-2xl bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0">
-                    <PassengerBunnySvg size={26} />
-                  </div>
-                  <div>
-                    <div className="text-base font-black tracking-tight text-slate-900 font-display leading-none">
-                      CAMPUS<span className="text-orange-500">HOP</span>
-                    </div>
-                    <div className="text-[10px] font-bold text-slate-500 mt-0.5">
-                      SIIT & มธ. หารค่ารถ
-                    </div>
+                  <CampusHopLogoSvg size={38} className="shrink-0" />
+                  <div className="text-base font-black tracking-tight text-slate-900 font-display leading-none">
+                    CAMPUS<span className="text-orange-500">HOP</span>
                   </div>
                 </button>
 
@@ -1592,37 +1649,28 @@ export default function App() {
 
           {/* Main Content Column */}
           <div className="flex-1 flex flex-col overflow-hidden relative">
-            {/* Persistent App Header (Full Header on Mobile, Contextual Top Bar on Tablet) */}
+            {/* Persistent App Header (Clean Brand Logo, No Mobile Overflow, PRO Button Only on Tablet - Points 1, 3, 10) */}
             {showHeaderAndNav && (
-              <header className="px-3.5 py-2 bg-white border-b border-slate-200 flex items-center justify-between gap-2 z-30 shrink-0">
+              <header className="px-3.5 py-2 bg-white border-b border-slate-200 flex items-center justify-between gap-2 z-30 shrink-0 overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setScreen('explore')}
-                  className="min-h-[44px] flex items-center gap-2 text-left"
+                  className="min-h-[44px] flex items-center gap-2 text-left min-w-0 shrink-0"
                 >
-                  <div className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center">
-                    <PassengerBunnySvg size={22} />
-                  </div>
-                  <div>
-                    <div className="text-xs font-black tracking-tight text-slate-900 font-display leading-none">
-                      CAMPUS<span className="text-orange-500">HOP</span>
-                    </div>
-                    <div className="text-[9px] font-bold text-slate-500 mt-0.5">
-                      {isTablet
-                        ? 'โหมดแท็บเล็ตและไอแพด (Split-View)'
-                        : 'SIIT & มธ. หารค่ารถ'}
-                    </div>
+                  <CampusHopLogoSvg size={32} className="shrink-0" />
+                  <div className="text-sm font-black tracking-tight text-slate-900 font-display leading-none truncate">
+                    CAMPUS<span className="text-orange-500">HOP</span>
                   </div>
                 </button>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 shrink-0">
                   {/* Language Switcher Button (TH / EN) */}
                   <button
                     type="button"
                     onClick={() => setLang(lang === 'th' ? 'en' : 'th')}
                     title="สลับภาษา (Switch Language TH / EN)"
                     aria-label="สลับภาษา TH / EN"
-                    className="min-h-[44px] px-2.5 rounded-xl bg-slate-100 hover:bg-orange-50 border border-slate-200 text-[10px] font-black flex items-center gap-1 transition"
+                    className="min-h-[40px] px-2 rounded-xl bg-slate-100 hover:bg-orange-50 border border-slate-200 text-[10px] font-black flex items-center gap-0.5 transition shrink-0"
                   >
                     <span
                       className={
@@ -1653,12 +1701,12 @@ export default function App() {
                         : 'สลับเป็นโหมดสว่าง (Light Mode)'
                     }
                     aria-label="สลับโหมดสีหน้าจอ"
-                    className="min-w-[44px] min-h-[44px] rounded-xl bg-slate-100 hover:bg-orange-50 border border-slate-200 text-slate-700 flex items-center justify-center transition"
+                    className="min-w-[40px] min-h-[40px] rounded-xl bg-slate-100 hover:bg-orange-50 border border-slate-200 text-slate-700 flex items-center justify-center transition shrink-0"
                   >
                     {theme === 'light' ? (
-                      <IconMoon size={16} />
+                      <IconMoon size={15} />
                     ) : (
-                      <IconSun size={16} className="text-orange-400" />
+                      <IconSun size={15} className="text-orange-400" />
                     )}
                   </button>
 
@@ -1666,7 +1714,7 @@ export default function App() {
                     type="button"
                     onClick={() => setScreen('payment')}
                     title="การชำระเงินและโค้ดโปรโมชัน"
-                    className={`min-h-[44px] px-2.5 py-1.5 rounded-xl text-[10px] font-black border flex items-center gap-1 transition ${
+                    className={`min-h-[40px] px-2.5 py-1.5 rounded-xl text-[10px] font-black border flex items-center gap-1 transition shrink-0 ${
                       screen === 'payment'
                         ? 'bg-orange-500 text-white border-orange-500'
                         : 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100'
@@ -1681,7 +1729,7 @@ export default function App() {
                     onClick={() => setScreen('history')}
                     title="สถานะทริปและประวัติการเดินทาง"
                     aria-label="ประวัติการเดินทาง"
-                    className={`min-w-[44px] min-h-[44px] rounded-xl border flex items-center justify-center relative transition ${
+                    className={`min-w-[40px] min-h-[40px] rounded-xl border flex items-center justify-center relative transition shrink-0 ${
                       screen === 'history'
                         ? 'bg-orange-500 text-white border-orange-500'
                         : 'bg-slate-100 text-slate-700 border-slate-200 hover:border-orange-400'
@@ -1693,22 +1741,25 @@ export default function App() {
                     )}
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConfirmPremiumStep(false);
-                      setShowPremiumModal(true);
-                    }}
-                    title="จัดการสถานะสมาชิก HOP Premium"
-                    className={`min-h-[44px] px-3 py-1.5 rounded-full text-[10px] font-black border flex items-center gap-1 transition ${
-                      isPremium
-                        ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
-                        : 'bg-slate-100 text-slate-700 border-slate-300 hover:border-orange-400'
-                    }`}
-                  >
-                    <IconCrown size={12} />
-                    <span>{isPremium ? 'PRO' : 'อัปเกรด'}</span>
-                  </button>
+                  {/* Point 1: Remove PRO button from top-right header on mobile view; only show on Tablet where space is abundant */}
+                  {isTablet && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConfirmPremiumStep(false);
+                        setShowPremiumModal(true);
+                      }}
+                      title="จัดการสถานะสมาชิก HOP Premium"
+                      className={`min-h-[40px] px-3 py-1.5 rounded-full text-[10px] font-black border flex items-center gap-1 transition shrink-0 ${
+                        isPremium
+                          ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                          : 'bg-slate-100 text-slate-700 border-slate-300 hover:border-orange-400'
+                      }`}
+                    >
+                      <IconCrown size={12} />
+                      <span>{isPremium ? 'PRO' : 'อัปเกรด'}</span>
+                    </button>
+                  )}
                 </div>
               </header>
             )}
@@ -1733,6 +1784,7 @@ export default function App() {
                 isTablet={isTablet}
                 activeBooking={activeBooking}
                 onOpenSeatModal={handleOpenSeatModal}
+                onOpenDriverChat={handleOpenDriverChat}
                 onOpenAiTab={() => {
                   setAiSubTab('ai');
                   setScreen('ai');
@@ -1760,6 +1812,10 @@ export default function App() {
                 onTriggerWatcherMatch={handleTriggerWatcherMatch}
                 activeSubTab={aiSubTab}
                 onChangeSubTab={setAiSubTab}
+                rides={rides}
+                activeBooking={activeBooking}
+                selectedFriendRideId={selectedFriendRideId}
+                onSelectFriendRideId={setSelectedFriendRideId}
               />
             )}
             {screen === 'create' && (
@@ -1805,6 +1861,7 @@ export default function App() {
             onSelectCouponCode={setSelectedCouponCode}
             onConfirmBooking={handleConfirmBooking}
             onConfirmCancelBooking={handleConfirmCancelBooking}
+            onOpenDriverChat={handleOpenDriverChat}
             onSwitchToActiveRide={() => {
               if (activeBookedRideObj) {
                 setActiveModalInitialStep('active-status');
