@@ -34,7 +34,7 @@ const PHRASE_DICTIONARY: Array<[string, string]> = [
   ['หน้าหลัก (ค้นหาทริป)', 'Explore (Find Rides)'],
   ['แผนที่จุดรับ-ส่ง', 'Pickup & Drop-off Map'],
   ['AI จองให้ & เพื่อน', 'AI Auto-Book & Friends'],
-  ['ชำระเงิน & คูปอง', 'Payment & Promos'],
+  ['ชำระเงิน & คูปอง', 'Payment & CODE'],
   ['ประวัติการเดินทาง', 'Trip History'],
   ['โปรไฟล์ของฉัน', 'My Profile'],
   ['● ทริปที่กำลังเดินทาง', '● Active Ongoing Trip'],
@@ -44,7 +44,7 @@ const PHRASE_DICTIONARY: Array<[string, string]> = [
   ['เปิดตี้', 'Create Hop'],
   ['AI จองให้', 'AI Concierge'],
   ['โปรไฟล์', 'Profile'],
-  ['คูปอง', 'Pro'],
+  ['คูปอง', 'CODE'],
   ['อัปเกรด', 'Upgrade'],
 
   // Single Active Booking Guard & Toasts

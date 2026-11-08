@@ -8,7 +8,6 @@ import { CreateHopScreen } from './components/CreateHopScreen';
 import { ExploreScreen } from './components/ExploreScreen';
 import { applyDomLanguage, type AppLang } from './utils/i18n';
 import {
-  CampusHopLogoSvg,
   DriverBunnySvg,
   HoppingBunnySvg,
   IconCar,
@@ -382,19 +381,17 @@ export default function App() {
     <div className="p-6 flex-1 flex flex-col items-center justify-center bg-white relative overflow-hidden">
       {splashPhase === 'hopping' ? (
         <div className="flex flex-col items-center animate-[bounce-hop_1.2s_ease-in-out_infinite]">
-          <CampusHopLogoSvg size={88} className="mb-3 drop-shadow-lg" />
-          <HoppingBunnySvg width={72} height={90} />
-          <h2 className="mt-3 text-xl font-black text-orange-500 animate-pulse tracking-widest">
+          <HoppingBunnySvg width={84} height={104} />
+          <h2 className="mt-4 text-xl font-black text-orange-500 animate-pulse tracking-widest">
             CAMPUSHOP
           </h2>
           <p className="text-xs font-bold text-slate-500 mt-1">
-            แพลตฟอร์มหารค่ารถและหาเพื่อนร่วมทางมหาวิทยาลัย
+            แพลตฟอร์มหารค่ารถและหาเพื่อนร่วมทาง SIIT & มธ.
           </p>
         </div>
       ) : (
         <div className="flex flex-col items-center animate-[zoom-smile_0.8s_ease-out_forwards]">
-          <CampusHopLogoSvg size={96} className="mb-3 drop-shadow-xl" />
-          <SmilingBunnySvg size={112} />
+          <SmilingBunnySvg size={136} />
           <h2 className="mt-3 text-2xl font-black text-orange-500">พร้อมออกเดินทาง!</h2>
         </div>
       )}
@@ -425,15 +422,15 @@ export default function App() {
             type="button"
             onClick={() => setScreen('splash')}
             title="ดูแอนิเมชันเปิดตัว"
-            className="mx-auto flex items-center justify-center gap-2 text-orange-500 mb-2.5 min-h-[44px] min-w-[44px]"
+            className="mx-auto flex justify-center text-orange-500 mb-2 min-h-[44px] min-w-[44px]"
           >
-            <CampusHopLogoSvg size={76} className="drop-shadow-md" />
+            <SmilingBunnySvg size={88} />
           </button>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight font-display">
-            CAMPUS<span className="text-orange-500">HOP</span>
+          <h1 className="text-3xl font-black text-orange-500 tracking-tight font-display">
+            CAMPUSHOP
           </h1>
           <p className="text-xs font-bold text-slate-500 mt-1">
-            แพลตฟอร์มหารค่ารถและหาเพื่อนร่วมทางนักศึกษา
+            หารค่ารถและหาเพื่อนร่วมทาง SIIT ม.ธรรมศาสตร์
           </p>
         </div>
 
@@ -1506,13 +1503,15 @@ export default function App() {
               className="w-[228px] lg:w-[244px] bg-white border-r border-slate-200 flex flex-col justify-between p-3.5 shrink-0 z-20"
             >
               <div className="space-y-4">
-                {/* Brand Logo Header in Sidebar (Clean Logo & Brand Name Only - Point 3 & 10) */}
+                {/* Brand Logo Header in Sidebar (Original Rabbit Logo & Clean Brand Name) */}
                 <button
                   type="button"
                   onClick={() => setScreen('explore')}
                   className="w-full flex items-center gap-2.5 text-left p-2 rounded-2xl hover:bg-orange-50/60 transition"
                 >
-                  <CampusHopLogoSvg size={38} className="shrink-0" />
+                  <div className="w-10 h-10 rounded-2xl bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0">
+                    <PassengerBunnySvg size={26} />
+                  </div>
                   <div className="text-base font-black tracking-tight text-slate-900 font-display leading-none">
                     CAMPUS<span className="text-orange-500">HOP</span>
                   </div>
@@ -1649,7 +1648,7 @@ export default function App() {
 
           {/* Main Content Column */}
           <div className="flex-1 flex flex-col overflow-hidden relative">
-            {/* Persistent App Header (Clean Brand Logo, No Mobile Overflow, PRO Button Only on Tablet - Points 1, 3, 10) */}
+            {/* Persistent App Header (Original Rabbit Logo, CODE Button, No Mobile Overflow) */}
             {showHeaderAndNav && (
               <header className="px-3.5 py-2 bg-white border-b border-slate-200 flex items-center justify-between gap-2 z-30 shrink-0 overflow-hidden">
                 <button
@@ -1657,8 +1656,10 @@ export default function App() {
                   onClick={() => setScreen('explore')}
                   className="min-h-[44px] flex items-center gap-2 text-left min-w-0 shrink-0"
                 >
-                  <CampusHopLogoSvg size={32} className="shrink-0" />
-                  <div className="text-sm font-black tracking-tight text-slate-900 font-display leading-none truncate">
+                  <div className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0">
+                    <PassengerBunnySvg size={22} />
+                  </div>
+                  <div className="text-xs font-black tracking-tight text-slate-900 font-display leading-none truncate">
                     CAMPUS<span className="text-orange-500">HOP</span>
                   </div>
                 </button>
@@ -1721,7 +1722,7 @@ export default function App() {
                     }`}
                   >
                     <IconTicket size={13} />
-                    <span>คูปอง</span>
+                    <span>CODE</span>
                   </button>
 
                   <button

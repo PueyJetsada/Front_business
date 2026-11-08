@@ -588,67 +588,6 @@ export const CampusHopLogoSvg: React.FC<{
   size?: number;
   className?: string;
 }> = ({ size = 36, className = '' }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 64 64"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-    aria-label="CAMPUSHOP App Icon"
-  >
-    <defs>
-      <linearGradient id="ch-bg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
-        <stop offset="0%" stopColor="#0f172a" />
-        <stop offset="100%" stopColor="#1e293b" />
-      </linearGradient>
-      <linearGradient id="ch-orange" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
-        <stop offset="0%" stopColor="#fb923c" />
-        <stop offset="100%" stopColor="#ea580c" />
-      </linearGradient>
-    </defs>
-    <rect
-      x="2"
-      y="2"
-      width="60"
-      height="60"
-      rx="16"
-      fill="url(#ch-bg)"
-      stroke="url(#ch-orange)"
-      strokeWidth="3.5"
-    />
-    <path
-      d="M42 15C29.5 11.5 16 19.5 15 32.5C14 45 26.5 52.5 40 49.5"
-      stroke="url(#ch-orange)"
-      strokeWidth="5.5"
-      strokeLinecap="round"
-    />
-    <path
-      d="M47 13C43.7 13 41 15.7 41 19C41 23.5 47 29 47 29C47 29 53 23.5 53 19C53 15.7 50.3 13 47 13Z"
-      fill="#f97316"
-    />
-    <circle cx="47" cy="19" r="2.3" fill="#ffffff" />
-    <path
-      d="M24 36.5L26.6 30.5C27.2 29.2 28.5 28.4 29.9 28.4H39.1C40.5 28.4 41.8 29.2 42.4 30.5L45 36.5"
-      stroke="#ffffff"
-      strokeWidth="2.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <rect
-      x="21.5"
-      y="35.5"
-      width="26"
-      height="8.5"
-      rx="3.5"
-      fill="#f97316"
-      stroke="#ffffff"
-      strokeWidth="2"
-    />
-    <circle cx="27" cy="44" r="3" fill="#0f172a" stroke="#fde047" strokeWidth="2" />
-    <circle cx="42" cy="44" r="3" fill="#0f172a" stroke="#fde047" strokeWidth="2" />
-    <circle cx="26.5" cy="39.5" r="1.2" fill="#fde047" />
-    <circle cx="42.5" cy="39.5" r="1.2" fill="#fde047" />
-  </svg>
+  <PassengerBunnySvg size={size} className={className || 'text-orange-500'} />
 );
 
