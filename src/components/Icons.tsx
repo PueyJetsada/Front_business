@@ -588,6 +588,43 @@ export const CampusHopLogoSvg: React.FC<{
   size?: number;
   className?: string;
 }> = ({ size = 36, className = '' }) => (
-  <PassengerBunnySvg size={size} className={className || 'text-orange-500'} />
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 64 64"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    aria-label="CAMPUSHOP Rabbit Logo"
+  >
+    <rect
+      x="2"
+      y="2"
+      width="60"
+      height="60"
+      rx="18"
+      fill="#fff7ed"
+      stroke="#fed7aa"
+      strokeWidth="4"
+    />
+    <g
+      transform="translate(10, 10) scale(1.8333)"
+      stroke="#f97316"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      fill="none"
+    >
+      <path d="M8 9V4a2 2 0 0 1 4 0v5" fill="#ffffff" />
+      <path d="M16 9V4a2 2 0 0 0-4 0v5" fill="#ffffff" />
+      <path
+        d="M4 14.5c0-3 2.5-5.5 8-5.5s8 2.5 8 5.5-2.5 6.5-8 6.5-8-3.5-8-6.5z"
+        fill="#ffffff"
+      />
+      <circle cx="9" cy="14" r="1.4" fill="#f97316" stroke="none" />
+      <circle cx="15" cy="14" r="1.4" fill="#f97316" stroke="none" />
+      <path d="M12 16.5c-1 0-1.5-.5-1.5-.5m1.5.5c1 0 1.5-.5 1.5-.5m-1.5.5v-1.5" />
+    </g>
+  </svg>
 );
 

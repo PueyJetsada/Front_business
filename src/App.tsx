@@ -87,6 +87,14 @@ export default function App() {
   useEffect(() => {
     const handleResize = () => setViewportWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
+
+    // Force-refresh browser tab favicon to Rabbit Logo (bypasses stale browser cache)
+    const rabbitSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none"><rect x="2" y="2" width="60" height="60" rx="18" fill="#fff7ed" stroke="#fed7aa" stroke-width="4"/><g transform="translate(10, 10) scale(1.8333)" stroke="#f97316" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M8 9V4a2 2 0 0 1 4 0v5" fill="#ffffff"/><path d="M16 9V4a2 2 0 0 0-4 0v5" fill="#ffffff"/><path d="M4 14.5c0-3 2.5-5.5 8-5.5s8 2.5 8 5.5-2.5 6.5-8 6.5-8-3.5-8-6.5z" fill="#ffffff"/><circle cx="9" cy="14" r="1.4" fill="#f97316" stroke="none"/><circle cx="15" cy="14" r="1.4" fill="#f97316" stroke="none"/><path d="M12 16.5c-1 0-1.5-.5-1.5-.5m1.5.5c1 0 1.5-.5 1.5-.5m-1.5.5v-1.5"/></g></svg>`;
+    const rabbitDataUri = `data:image/svg+xml;utf8,${encodeURIComponent(rabbitSvg)}`;
+    document.querySelectorAll("link[rel='icon']").forEach((el) => {
+      (el as HTMLLinkElement).href = rabbitDataUri;
+    });
+
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
@@ -378,12 +386,17 @@ export default function App() {
     : null;
 
   const renderSplash = () => (
-    <div className="p-6 flex-1 flex flex-col items-center justify-center bg-white relative overflow-hidden">
+    <div
+      onClick={() => setScreen('login')}
+      className="p-6 flex-1 flex flex-col items-center justify-center bg-white relative overflow-hidden cursor-pointer"
+    >
       {splashPhase === 'hopping' ? (
         <div className="flex flex-col items-center animate-[bounce-hop_1.2s_ease-in-out_infinite]">
-          <HoppingBunnySvg width={84} height={104} />
-          <h2 className="mt-4 text-xl font-black text-orange-500 animate-pulse tracking-widest">
-            CAMPUSHOP
+          <div className="w-28 h-28 rounded-[32px] bg-orange-50 border-2 border-orange-200 shadow-lg flex items-center justify-center mb-4">
+            <HoppingBunnySvg width={76} height={94} />
+          </div>
+          <h2 className="mt-1 text-2xl font-black text-slate-900 animate-pulse tracking-tight font-display">
+            CAMPUS<span className="text-orange-500">HOP</span>
           </h2>
           <p className="text-xs font-bold text-slate-500 mt-1">
             แพลตฟอร์มหารค่ารถและหาเพื่อนร่วมทาง SIIT & มธ.
@@ -391,8 +404,10 @@ export default function App() {
         </div>
       ) : (
         <div className="flex flex-col items-center animate-[zoom-smile_0.8s_ease-out_forwards]">
-          <SmilingBunnySvg size={136} />
-          <h2 className="mt-3 text-2xl font-black text-orange-500">พร้อมออกเดินทาง!</h2>
+          <div className="w-32 h-32 rounded-[36px] bg-orange-50 border-2 border-orange-200 shadow-xl flex items-center justify-center mb-3">
+            <SmilingBunnySvg size={96} />
+          </div>
+          <h2 className="mt-2 text-2xl font-black text-orange-500">พร้อมออกเดินทาง!</h2>
         </div>
       )}
     </div>
@@ -422,12 +437,12 @@ export default function App() {
             type="button"
             onClick={() => setScreen('splash')}
             title="ดูแอนิเมชันเปิดตัว"
-            className="mx-auto flex justify-center text-orange-500 mb-2 min-h-[44px] min-w-[44px]"
+            className="mx-auto w-24 h-24 rounded-[28px] bg-orange-50 border-2 border-orange-200 shadow-md flex items-center justify-center text-orange-500 mb-3 hover:scale-105 transition"
           >
-            <SmilingBunnySvg size={88} />
+            <PassengerBunnySvg size={62} />
           </button>
-          <h1 className="text-3xl font-black text-orange-500 tracking-tight font-display">
-            CAMPUSHOP
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight font-display">
+            CAMPUS<span className="text-orange-500">HOP</span>
           </h1>
           <p className="text-xs font-bold text-slate-500 mt-1">
             หารค่ารถและหาเพื่อนร่วมทาง SIIT ม.ธรรมศาสตร์
@@ -494,7 +509,10 @@ export default function App() {
           >
             ← กลับหน้าเข้าสู่ระบบ
           </button>
-          <h2 className="text-2xl font-black mt-6 text-slate-900">
+          <div className="w-16 h-16 rounded-2xl bg-orange-50 border-2 border-orange-200 flex items-center justify-center mt-5 mb-2">
+            <PassengerBunnySvg size={40} />
+          </div>
+          <h2 className="text-2xl font-black mt-2 text-slate-900">
             ยืนยันรหัสนักศึกษา
           </h2>
           <p className="text-xs text-slate-600 mt-2 font-medium">
@@ -1506,7 +1524,10 @@ export default function App() {
                 {/* Brand Logo Header in Sidebar (Original Rabbit Logo & Clean Brand Name) */}
                 <button
                   type="button"
-                  onClick={() => setScreen('explore')}
+                  onClick={() =>
+                    setScreen(screen === 'explore' ? 'splash' : 'explore')
+                  }
+                  title="หน้าหลัก / ดูหน้าโลโก้แอพ"
                   className="w-full flex items-center gap-2.5 text-left p-2 rounded-2xl hover:bg-orange-50/60 transition"
                 >
                   <div className="w-10 h-10 rounded-2xl bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0">
@@ -1653,7 +1674,10 @@ export default function App() {
               <header className="px-3.5 py-2 bg-white border-b border-slate-200 flex items-center justify-between gap-2 z-30 shrink-0 overflow-hidden">
                 <button
                   type="button"
-                  onClick={() => setScreen('explore')}
+                  onClick={() =>
+                    setScreen(screen === 'explore' ? 'splash' : 'explore')
+                  }
+                  title="หน้าหลัก / ดูหน้าโลโก้แอพ"
                   className="min-h-[44px] flex items-center gap-2 text-left min-w-0 shrink-0"
                 >
                   <div className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0">
