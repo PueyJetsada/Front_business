@@ -650,8 +650,6 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
       >
         {enrichedRides.map(({ ride, match }, idx) => {
           const isThisRideBooked = activeBooking?.rideId === ride.id;
-          const isInspectedOnTablet =
-            isTablet && inspectedEntry?.ride.id === ride.id;
           const regularFarePerSeat = ride.baseFare + ride.commissionFee;
           const premiumSavingPerSeat = isPremium ? ride.commissionFee : 0;
           const netPerSeat = regularFarePerSeat - premiumSavingPerSeat;
@@ -678,14 +676,8 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
               onClick={() => {
                 if (isTablet) setInspectedRideId(ride.id);
               }}
-              className={`bg-white p-3.5 rounded-2xl shadow-sm transition space-y-2.5 flex flex-col justify-between overflow-hidden min-w-0 ${
+              className={`bg-white p-3.5 rounded-2xl shadow-sm transition space-y-2.5 flex flex-col justify-between overflow-hidden min-w-0 border-2 border-slate-200 hover:border-orange-300 ${
                 isTablet ? 'cursor-pointer' : ''
-              } ${
-                isInspectedOnTablet
-                  ? 'border-[3px] border-orange-500 ring-2 ring-orange-200'
-                  : idx === 0
-                    ? 'border-[3px] border-orange-500'
-                    : 'border-2 border-slate-200 hover:border-orange-300'
               }`}
             >
               <div className="space-y-2 min-w-0">
