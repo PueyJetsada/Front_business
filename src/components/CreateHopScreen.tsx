@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import {
   CAMPUS_LOCATIONS,
+  getSeatPositionsByType,
+  MPV_SEAT_POSITIONS,
   SEDAN_SEAT_POSITIONS,
   SUV_SEAT_POSITIONS,
   VEHICLE_COLOR_OPTIONS,
@@ -52,7 +54,8 @@ export const CreateHopScreen: React.FC<CreateHopScreenProps> = ({
   const [destination, setDestination] = useState('SIIT บางกระดี่');
   const [scheduleLabel, setScheduleLabel] = useState('พรุ่งนี้ • 09:00 น.');
 
-  const totalSeatsForType = vehicleType === 'suv' ? 6 : 4;
+  const totalSeatsForType =
+    vehicleType === 'suv' || vehicleType === 'mpv' ? 6 : 4;
   const [seats, setSeats] = useState<number>(3);
 
   // Numeric-only state for iOS numeric keypad (Point 6)
@@ -73,10 +76,10 @@ export const CreateHopScreen: React.FC<CreateHopScreenProps> = ({
 
   const handleSelectVehicleType = (nextType: VehicleSeatType) => {
     setVehicleType(nextType);
-    const maxSeats = nextType === 'suv' ? 6 : 4;
+    const maxSeats = nextType === 'suv' || nextType === 'mpv' ? 6 : 4;
     if (seats > maxSeats) {
       setSeats(maxSeats);
-    } else if (nextType === 'suv' && seats === 3) {
+    } else if ((nextType === 'suv' || nextType === 'mpv') && seats === 3) {
       setSeats(4);
     }
   };
@@ -105,8 +108,7 @@ export const CreateHopScreen: React.FC<CreateHopScreenProps> = ({
     );
   };
 
-  const seatPositions =
-    vehicleType === 'suv' ? SUV_SEAT_POSITIONS : SEDAN_SEAT_POSITIONS;
+  const seatPositions = getSeatPositionsByType(vehicleType, totalSeatsForType);
   const allSeatIds: SeatId[] = seatPositions.map((s) => s.id);
   const occupiedCount = Math.max(0, totalSeatsForType - seats);
   const previewOccupiedSeats: SeatId[] = allSeatIds.slice(
@@ -123,7 +125,12 @@ export const CreateHopScreen: React.FC<CreateHopScreenProps> = ({
     const cleanBrand = carBrand.trim() || userProfile.carBrand || 'Honda Civic';
     const cleanColor = carColor.trim() || userProfile.carColor || 'สีขาว';
     const cleanLicense = carLicense.trim() || userProfile.carLicense || 'กข 1234';
-    const typeSuffix = vehicleType === 'suv' ? ' (SUV 7 ที่นั่ง)' : '';
+    const typeSuffix =
+      vehicleType === 'mpv'
+        ? ' (MPV 7 ที่นั่ง)'
+        : vehicleType === 'suv'
+          ? ' (SUV 7 ที่นั่ง)'
+          : '';
 
     const newRide: RideHop = {
       id: `hop-custom-${Date.now()}`,
@@ -209,57 +216,81 @@ export const CreateHopScreen: React.FC<CreateHopScreenProps> = ({
               </span>
             </div>
 
-            {/* Vehicle Type Selector (Sedan 4 passenger seats vs SUV/MPV 6 passenger seats) */}
+            {/* Vehicle Type Selector (Sedan 4 passenger seats vs SUV 2-3-2 vs MPV 2-2-3) */}
             <div>
               <label className="text-[10px] font-black text-slate-600 block mb-1">
                 ประเภทรถ (ปรับผังที่นั่งอัตโนมัติ)
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-1.5">
                 <button
                   type="button"
                   onClick={() => handleSelectVehicleType('sedan')}
-                  className={`min-h-[46px] p-2.5 rounded-xl border-2 text-left transition ${
+                  className={`min-h-[50px] p-2 rounded-xl border-2 text-left transition ${
                     vehicleType === 'sedan'
                       ? 'bg-orange-50 border-orange-500 shadow-sm'
                       : 'bg-slate-50 border-slate-200 hover:border-orange-300'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-black text-slate-900">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] font-black text-slate-900">
                       รถเก๋ง / Sedan
                     </span>
                     {vehicleType === 'sedan' && (
-                      <span className="w-4 h-4 rounded-full bg-orange-500 text-white flex items-center justify-center">
-                        <IconCheck size={10} />
+                      <span className="w-3.5 h-3.5 rounded-full bg-orange-500 text-white flex items-center justify-center shrink-0">
+                        <IconCheck size={9} />
                       </span>
                     )}
                   </div>
-                  <div className="text-[9px] font-bold text-slate-500 mt-0.5">
-                    ผู้โดยสาร 4 ที่นั่ง (2 แถว)
+                  <div className="text-[8px] font-bold text-slate-500 mt-0.5 leading-tight">
+                    แถวหน้า 2 • หลัง 3 (4 ที่นั่ง)
                   </div>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => handleSelectVehicleType('suv')}
-                  className={`min-h-[46px] p-2.5 rounded-xl border-2 text-left transition ${
+                  className={`min-h-[50px] p-2 rounded-xl border-2 text-left transition ${
                     vehicleType === 'suv'
                       ? 'bg-orange-50 border-orange-500 shadow-sm'
                       : 'bg-slate-50 border-slate-200 hover:border-orange-300'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-black text-slate-900">
-                      รถ SUV / MPV 7 ที่นั่ง
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] font-black text-slate-900">
+                      รถ SUV (2-3-2)
                     </span>
                     {vehicleType === 'suv' && (
-                      <span className="w-4 h-4 rounded-full bg-orange-500 text-white flex items-center justify-center">
-                        <IconCheck size={10} />
+                      <span className="w-3.5 h-3.5 rounded-full bg-orange-500 text-white flex items-center justify-center shrink-0">
+                        <IconCheck size={9} />
                       </span>
                     )}
                   </div>
-                  <div className="text-[9px] font-bold text-slate-500 mt-0.5">
-                    ผู้โดยสาร 6 ที่นั่ง (3 แถว)
+                  <div className="text-[8px] font-bold text-slate-500 mt-0.5 leading-tight">
+                    หน้า 2 • สอง 3 • สาม 2 (6 ที่นั่ง)
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectVehicleType('mpv')}
+                  className={`min-h-[50px] p-2 rounded-xl border-2 text-left transition ${
+                    vehicleType === 'mpv'
+                      ? 'bg-orange-50 border-orange-500 shadow-sm'
+                      : 'bg-slate-50 border-slate-200 hover:border-orange-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] font-black text-slate-900">
+                      รถ MPV (2-2-3)
+                    </span>
+                    {vehicleType === 'mpv' && (
+                      <span className="w-3.5 h-3.5 rounded-full bg-orange-500 text-white flex items-center justify-center shrink-0">
+                        <IconCheck size={9} />
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[8px] font-bold text-slate-500 mt-0.5 leading-tight">
+                    หน้า 2 • กลาง 2 เบาะแยก • หลัง 3
                   </div>
                 </button>
               </div>
@@ -449,25 +480,28 @@ export const CreateHopScreen: React.FC<CreateHopScreenProps> = ({
                 </label>
                 <div
                   className={`grid gap-1.5 ${
-                    vehicleType === 'suv' ? 'grid-cols-6' : 'grid-cols-4'
+                    vehicleType === 'suv' || vehicleType === 'mpv'
+                      ? 'grid-cols-6'
+                      : 'grid-cols-4'
                   }`}
                 >
-                  {(vehicleType === 'suv' ? [1, 2, 3, 4, 5, 6] : [1, 2, 3, 4]).map(
-                    (n) => (
-                      <button
-                        key={n}
-                        type="button"
-                        onClick={() => setSeats(n)}
-                        className={`min-h-[42px] py-1.5 rounded-xl text-xs font-black border tabular-nums active:scale-95 transition ${
-                          seats === n
-                            ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
-                            : 'bg-slate-50 text-slate-700 border-slate-200'
-                        }`}
-                      >
-                        {n}
-                      </button>
-                    )
-                  )}
+                  {(vehicleType === 'suv' || vehicleType === 'mpv'
+                    ? [1, 2, 3, 4, 5, 6]
+                    : [1, 2, 3, 4]
+                  ).map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setSeats(n)}
+                      className={`min-h-[42px] py-1.5 rounded-xl text-xs font-black border tabular-nums active:scale-95 transition ${
+                        seats === n
+                          ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                          : 'bg-slate-50 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -490,25 +524,30 @@ export const CreateHopScreen: React.FC<CreateHopScreenProps> = ({
               </div>
             </div>
 
-            {/* Live Dynamic Seat Layout Preview (Sedan 2-Row vs SUV 3-Row) */}
+            {/* Live Dynamic Seat Layout Preview (Sedan 2-Row vs SUV 2-3-2 vs MPV 2-2-3 Captain Seats) */}
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 space-y-2">
               <div className="flex items-center justify-between text-[10px] font-black text-slate-700">
                 <span>
-                  {vehicleType === 'suv'
-                    ? 'ตัวอย่างผังที่นั่ง รถ SUV / MPV (ผู้โดยสาร 6 ที่นั่ง • 3 แถว)'
-                    : 'ตัวอย่างผังที่นั่ง รถเก๋ง / Sedan (ผู้โดยสาร 4 ที่นั่ง • 2 แถว)'}
+                  {vehicleType === 'mpv'
+                    ? 'ผังที่นั่ง รถ MPV (แถวหน้า 2 • แถวกลาง 2 เบาะแยก • หลังสุด 3)'
+                    : vehicleType === 'suv'
+                      ? 'ผังที่นั่ง รถ SUV (แถวหน้า 2 • แถวสอง 3 • แถวสาม 2)'
+                      : 'ผังที่นั่ง รถเก๋ง / Sedan (แถวหน้า 2 • แถวหลัง 3)'}
                 </span>
-                <span className="text-emerald-700">
+                <span className="text-emerald-700 shrink-0 ml-1">
                   {`ว่าง ${seats}/${totalSeatsForType} ที่นั่ง`}
                 </span>
               </div>
 
-              <div className="mx-auto max-w-[235px] bg-slate-100 border-2 border-slate-700 rounded-t-[32px] rounded-b-[18px] p-2 space-y-1.5">
+              <div className="mx-auto max-w-[245px] bg-slate-100 border-2 border-slate-700 rounded-t-[32px] rounded-b-[18px] p-2 space-y-1.5">
                 <div className="h-4 bg-sky-100 border border-slate-400 rounded-t-[16px] rounded-b text-[8px] font-black text-slate-600 flex items-center justify-center">
                   หน้ารถ (ทิศทางเดินทาง ▲)
                 </div>
 
-                {/* Row 1: Front Passenger + Driver */}
+                {/* Row 1: Front Passenger + Driver (2 คน) */}
+                <div className="text-[7px] font-black text-slate-500 text-center">
+                  แถวหน้า: 2 คน (คนขับ 1 + ข้างคนขับ 1)
+                </div>
                 <div className="grid grid-cols-2 gap-2.5 px-1.5">
                   <div
                     className={`h-11 rounded-xl border-2 flex flex-col items-center justify-center text-[8px] font-black ${
@@ -529,30 +568,112 @@ export const CreateHopScreen: React.FC<CreateHopScreenProps> = ({
                 </div>
 
                 {vehicleType === 'sedan' ? (
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {(['R1', 'R2', 'R3'] as SeatId[]).map((sid) => {
-                      const occ = previewOccupiedSeats.includes(sid);
-                      const meta = SEDAN_SEAT_POSITIONS.find(
-                        (s) => s.id === sid
-                      )!;
-                      return (
-                        <div
-                          key={sid}
-                          className={`h-11 rounded-xl border-2 flex flex-col items-center justify-center text-[8px] font-black ${
-                            occ
-                              ? 'bg-slate-200 border-slate-300 text-slate-400'
-                              : 'bg-emerald-50 border-emerald-400 text-emerald-950'
-                          }`}
-                        >
-                          <span>{meta.code}</span>
-                          <span>{meta.shortLabel}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <>
+                    <div className="text-[7px] font-black text-slate-500 text-center">
+                      แถวหลัง: 3 คน
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {(['R1', 'R2', 'R3'] as SeatId[]).map((sid) => {
+                        const occ = previewOccupiedSeats.includes(sid);
+                        const meta = SEDAN_SEAT_POSITIONS.find(
+                          (s) => s.id === sid
+                        )!;
+                        return (
+                          <div
+                            key={sid}
+                            className={`h-11 rounded-xl border-2 flex flex-col items-center justify-center text-[8px] font-black ${
+                              occ
+                                ? 'bg-slate-200 border-slate-300 text-slate-400'
+                                : 'bg-emerald-50 border-emerald-400 text-emerald-950'
+                            }`}
+                          >
+                            <span>{meta.code}</span>
+                            <span>{meta.shortLabel}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : vehicleType === 'mpv' ? (
+                  <>
+                    {/* MPV Row 2: 2 Captain Seats (เบาะแยก ปรับไฟฟ้า ไม่มีที่นั่งกลาง) */}
+                    <div className="text-[7px] font-black text-slate-500 text-center">
+                      แถวกลาง: 2 คน (เบาะแยก ปรับไฟฟ้า • ไม่มีที่นั่งกลาง)
+                    </div>
+                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 px-1">
+                      {(() => {
+                        const occ = previewOccupiedSeats.includes('M1');
+                        const meta = MPV_SEAT_POSITIONS.find(
+                          (s) => s.id === 'M1'
+                        )!;
+                        return (
+                          <div
+                            className={`h-11 rounded-xl border-2 flex flex-col items-center justify-center text-[8px] font-black ${
+                              occ
+                                ? 'bg-slate-200 border-slate-300 text-slate-400'
+                                : 'bg-emerald-50 border-emerald-400 text-emerald-950'
+                            }`}
+                          >
+                            <span>{meta.code}</span>
+                            <span>{meta.shortLabel}</span>
+                          </div>
+                        );
+                      })()}
+                      <div className="h-10 px-1.5 rounded-lg border border-dashed border-slate-300 bg-slate-200/70 flex flex-col items-center justify-center text-[7px] font-black text-slate-500 leading-tight text-center">
+                        <span>ทางเดิน</span>
+                        <span>เบาะแยก</span>
+                      </div>
+                      {(() => {
+                        const occ = previewOccupiedSeats.includes('M2');
+                        const meta = MPV_SEAT_POSITIONS.find(
+                          (s) => s.id === 'M2'
+                        )!;
+                        return (
+                          <div
+                            className={`h-11 rounded-xl border-2 flex flex-col items-center justify-center text-[8px] font-black ${
+                              occ
+                                ? 'bg-slate-200 border-slate-300 text-slate-400'
+                                : 'bg-emerald-50 border-emerald-400 text-emerald-950'
+                            }`}
+                          >
+                            <span>{meta.code}</span>
+                            <span>{meta.shortLabel}</span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                    {/* MPV Row 3: 3 Back Row Seats */}
+                    <div className="text-[7px] font-black text-slate-500 text-center">
+                      แถวหลังสุด: เบาะ 3 ที่นั่ง
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {(['B1', 'B2', 'B3'] as SeatId[]).map((sid) => {
+                        const occ = previewOccupiedSeats.includes(sid);
+                        const meta = MPV_SEAT_POSITIONS.find(
+                          (s) => s.id === sid
+                        )!;
+                        return (
+                          <div
+                            key={sid}
+                            className={`h-11 rounded-xl border-2 flex flex-col items-center justify-center text-[8px] font-black ${
+                              occ
+                                ? 'bg-slate-200 border-slate-300 text-slate-400'
+                                : 'bg-emerald-50 border-emerald-400 text-emerald-950'
+                            }`}
+                          >
+                            <span>{meta.code}</span>
+                            <span>{meta.shortLabel}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
                 ) : (
                   <>
                     {/* SUV Row 2: Middle Row 3 Seats */}
+                    <div className="text-[7px] font-black text-slate-500 text-center">
+                      แถวสอง: 3 คน
+                    </div>
                     <div className="grid grid-cols-3 gap-1.5">
                       {(['M1', 'M2', 'M3'] as SeatId[]).map((sid) => {
                         const occ = previewOccupiedSeats.includes(sid);
@@ -575,6 +696,9 @@ export const CreateHopScreen: React.FC<CreateHopScreenProps> = ({
                       })}
                     </div>
                     {/* SUV Row 3: Third Row 2 Seats */}
+                    <div className="text-[7px] font-black text-slate-500 text-center">
+                      แถวสาม: 2 คน
+                    </div>
                     <div className="grid grid-cols-2 gap-2.5 px-3">
                       {(['B1', 'B2'] as SeatId[]).map((sid) => {
                         const occ = previewOccupiedSeats.includes(sid);

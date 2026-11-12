@@ -266,11 +266,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-1.5">
+              <div className="grid grid-cols-3 gap-1.5">
                 {(
                   [
-                    { key: 'sedan', label: 'รถเก๋ง / Sedan (4 ที่นั่ง)' },
-                    { key: 'suv', label: 'รถ SUV / MPV (6 ที่นั่ง)' },
+                    { key: 'sedan', label: 'รถเก๋ง / Sedan (2-3)' },
+                    { key: 'suv', label: 'รถ SUV (2-3-2)' },
+                    { key: 'mpv', label: 'รถ MPV เบาะแยก (2-2-3)' },
                   ] as { key: VehicleSeatType; label: string }[]
                 ).map((vt) => {
                   const active = (profile.carType || 'sedan') === vt.key;
@@ -281,7 +282,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       onClick={() =>
                         onChangeProfile({ ...profile, carType: vt.key })
                       }
-                      className={`min-h-[38px] px-2.5 py-1.5 rounded-xl text-[10px] font-black border transition ${
+                      className={`min-h-[38px] px-2 py-1.5 rounded-xl text-[10px] font-black border transition ${
                         active
                           ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
                           : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-orange-300'

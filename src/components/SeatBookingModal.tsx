@@ -78,7 +78,9 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
   const isBlockedByOtherRide =
     Boolean(activeBooking) && activeBooking?.rideId !== ride.id;
 
-  const isSuvLayout = ride.vehicleType === 'suv' || ride.totalSeats >= 6;
+  const isMpvLayout = ride.vehicleType === 'mpv';
+  const isSuvLayout =
+    !isMpvLayout && (ride.vehicleType === 'suv' || ride.totalSeats >= 6);
   const seatPositions = getSeatPositionsForRide(ride);
 
   const firstFreeSeat =
@@ -398,13 +400,21 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
               </div>
             </div>
 
-            {/* 2D Top-Down Car Cabin Frame (Dynamic Sedan 2-Row vs SUV/MPV 3-Row) */}
+            {/* 2D Top-Down Car Cabin Frame (Dynamic Sedan 2-Row vs SUV 2-3-2 vs MPV 2-2-3 Captain Seats) */}
             <div className="mx-auto max-w-[275px] bg-slate-100 border-[3px] border-slate-700 rounded-t-[44px] rounded-b-[26px] p-3 shadow-inner space-y-2 relative">
               <div className="h-5 bg-sky-100/90 border-2 border-slate-400 rounded-t-[28px] rounded-b-lg flex items-center justify-between px-2.5 text-[8.5px] font-black text-slate-700 tracking-wider">
                 <span>หน้ารถ (ทิศทางเดินทาง ▲)</span>
                 <span className="bg-slate-800 text-orange-400 px-1.5 py-0.5 rounded font-mono text-[8px]">
-                  {isSuvLayout ? 'SUV / 7 ที่นั่ง' : 'รถเก๋ง / 4 ที่นั่ง'}
+                  {isMpvLayout
+                    ? 'MPV / 2-2-3'
+                    : isSuvLayout
+                      ? 'SUV / 2-3-2'
+                      : 'รถเก๋ง / 4 ที่นั่ง'}
                 </span>
+              </div>
+
+              <div className="text-center text-[8px] font-bold text-slate-400 tracking-widest">
+                ─── แถวหน้า: 2 คน (คนขับ 1 + ข้างคนขับ 1) ───
               </div>
 
               <div className="grid grid-cols-2 gap-4 px-2">
@@ -419,10 +429,33 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
                 </div>
               </div>
 
-              {isSuvLayout ? (
+              {isMpvLayout ? (
                 <>
                   <div className="text-center text-[8px] font-bold text-slate-400 tracking-widest">
-                    ─── แถวที่ 2 • เบาะแถวกลาง (3 ที่นั่ง) ───
+                    ─── แถวกลาง: 2 คน (เบาะแยก Captain Seat) ───
+                  </div>
+                  <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center px-1">
+                    {renderSeatButton('M1')}
+                    <div className="px-1.5 py-2 rounded-lg border border-dashed border-slate-300 text-[7.5px] font-black text-slate-400 text-center leading-tight">
+                      เบาะแยก
+                      <br />
+                      ทางเดิน
+                    </div>
+                    {renderSeatButton('M2')}
+                  </div>
+                  <div className="text-center text-[8px] font-bold text-slate-400 tracking-widest">
+                    ─── แถวหลังสุด: เบาะ 3 ที่นั่ง ───
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {renderSeatButton('B1')}
+                    {renderSeatButton('B2')}
+                    {renderSeatButton('B3')}
+                  </div>
+                </>
+              ) : isSuvLayout ? (
+                <>
+                  <div className="text-center text-[8px] font-bold text-slate-400 tracking-widest">
+                    ─── แถวสอง: 3 คน ───
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {renderSeatButton('M1')}
@@ -430,7 +463,7 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
                     {renderSeatButton('M3')}
                   </div>
                   <div className="text-center text-[8px] font-bold text-slate-400 tracking-widest">
-                    ─── แถวที่ 3 • เบาะหลังสุด (2 ที่นั่ง) ───
+                    ─── แถวสาม: 2 คน ───
                   </div>
                   <div className="grid grid-cols-2 gap-4 px-5">
                     {renderSeatButton('B1')}
@@ -440,7 +473,7 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
               ) : (
                 <>
                   <div className="text-center text-[8px] font-bold text-slate-400 tracking-widest">
-                    ─── แถวที่ 2 • เบาะหลัง (3 ที่นั่ง) ───
+                    ─── แถวสอง • เบาะหลัง (3 ที่นั่ง) ───
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {renderSeatButton('R1')}

@@ -960,15 +960,17 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
               </div>
             </div>
 
-            {/* Live 2D Car Seat Preview in Split-View (Dynamic Sedan vs SUV/MPV) */}
+            {/* Live 2D Car Seat Preview in Split-View (Dynamic Sedan vs SUV 2-3-2 vs MPV 2-2-3 Captain Seats) */}
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2">
               <div className="flex items-center justify-between text-[10px] font-black text-slate-700">
                 <span>
                   ผังที่นั่งในรถ (
-                  {inspectedEntry.ride.vehicleType === 'suv' ||
-                  inspectedEntry.ride.totalSeats >= 6
-                    ? 'SUV 7 ที่นั่ง'
-                    : 'รถเก๋ง 4 ที่นั่ง'}
+                  {inspectedEntry.ride.vehicleType === 'mpv'
+                    ? 'MPV 2-2-3 เบาะแยก'
+                    : inspectedEntry.ride.vehicleType === 'suv' ||
+                        inspectedEntry.ride.totalSeats >= 6
+                      ? 'SUV 2-3-2'
+                      : 'รถเก๋ง 4 ที่นั่ง'}
                   )
                 </span>
                 <span className="text-emerald-700">
@@ -1009,8 +1011,84 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                   </div>
                 </div>
 
-                {inspectedEntry.ride.vehicleType === 'suv' ||
-                inspectedEntry.ride.totalSeats >= 6 ? (
+                {inspectedEntry.ride.vehicleType === 'mpv' ? (
+                  <>
+                    <div className="grid grid-cols-[1fr_auto_1fr] gap-1.5 items-center px-1">
+                      {(['M1'] as const).map((seatId) => {
+                        const isOcc =
+                          inspectedEntry.ride.occupiedSeats.includes(seatId);
+                        const meta = getSeatPositionsForRide(
+                          inspectedEntry.ride
+                        ).find((s) => s.id === seatId)!;
+                        return (
+                          <button
+                            key={seatId}
+                            type="button"
+                            onClick={() => onOpenSeatModal(inspectedEntry.ride)}
+                            className={`h-11 rounded-xl border-2 flex flex-col items-center justify-center text-[8px] font-black transition ${
+                              isOcc
+                                ? 'bg-slate-200 border-slate-300 text-slate-400'
+                                : 'bg-emerald-50 border-emerald-400 text-emerald-950 hover:bg-orange-500 hover:text-white hover:border-orange-600'
+                            }`}
+                          >
+                            <span>{meta.code}</span>
+                            <span className="text-[7px]">{meta.shortLabel}</span>
+                          </button>
+                        );
+                      })}
+                      <div className="px-1 py-1.5 rounded border border-dashed border-slate-300 text-[7px] font-black text-slate-400 text-center leading-tight">
+                        เบาะแยก
+                      </div>
+                      {(['M2'] as const).map((seatId) => {
+                        const isOcc =
+                          inspectedEntry.ride.occupiedSeats.includes(seatId);
+                        const meta = getSeatPositionsForRide(
+                          inspectedEntry.ride
+                        ).find((s) => s.id === seatId)!;
+                        return (
+                          <button
+                            key={seatId}
+                            type="button"
+                            onClick={() => onOpenSeatModal(inspectedEntry.ride)}
+                            className={`h-11 rounded-xl border-2 flex flex-col items-center justify-center text-[8px] font-black transition ${
+                              isOcc
+                                ? 'bg-slate-200 border-slate-300 text-slate-400'
+                                : 'bg-emerald-50 border-emerald-400 text-emerald-950 hover:bg-orange-500 hover:text-white hover:border-orange-600'
+                            }`}
+                          >
+                            <span>{meta.code}</span>
+                            <span className="text-[7px]">{meta.shortLabel}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {(['B1', 'B2', 'B3'] as const).map((seatId) => {
+                        const isOcc =
+                          inspectedEntry.ride.occupiedSeats.includes(seatId);
+                        const meta = getSeatPositionsForRide(
+                          inspectedEntry.ride
+                        ).find((s) => s.id === seatId)!;
+                        return (
+                          <button
+                            key={seatId}
+                            type="button"
+                            onClick={() => onOpenSeatModal(inspectedEntry.ride)}
+                            className={`h-11 rounded-xl border-2 flex flex-col items-center justify-center text-[8px] font-black transition ${
+                              isOcc
+                                ? 'bg-slate-200 border-slate-300 text-slate-400'
+                                : 'bg-emerald-50 border-emerald-400 text-emerald-950 hover:bg-orange-500 hover:text-white hover:border-orange-600'
+                            }`}
+                          >
+                            <span>{meta.code}</span>
+                            <span className="text-[7px]">{meta.shortLabel}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : inspectedEntry.ride.vehicleType === 'suv' ||
+                  inspectedEntry.ride.totalSeats >= 6 ? (
                   <>
                     <div className="grid grid-cols-3 gap-1.5">
                       {(['M1', 'M2', 'M3'] as const).map((seatId) => {

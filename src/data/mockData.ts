@@ -1,7 +1,7 @@
 export type BookingMode = 'realtime' | 'prebook';
 export type UserRoleType = 'driver' | 'passenger' | 'both';
 export type HostType = 'driver' | 'cohopper';
-export type VehicleSeatType = 'sedan' | 'suv';
+export type VehicleSeatType = 'sedan' | 'suv' | 'mpv';
 export type SeatId =
   | 'F1'
   | 'R1'
@@ -11,7 +11,8 @@ export type SeatId =
   | 'M2'
   | 'M3'
   | 'B1'
-  | 'B2';
+  | 'B2'
+  | 'B3';
 
 export interface SeatPositionMeta {
   id: SeatId;
@@ -22,33 +23,55 @@ export interface SeatPositionMeta {
 }
 
 export const SEDAN_SEAT_POSITIONS: SeatPositionMeta[] = [
-  { id: 'F1', code: 'F1', label: 'ข้างคนขับ (หน้าซ้าย)', shortLabel: 'ข้างคนขับ', row: 1 },
+  { id: 'F1', code: 'F1', label: 'ข้างคนขับ (แถวหน้า)', shortLabel: 'ข้างคนขับ', row: 1 },
   { id: 'R1', code: 'R1', label: 'แถวหลังซ้าย (ริมหน้าต่าง)', shortLabel: 'หลังซ้าย', row: 2 },
   { id: 'R2', code: 'R2', label: 'แถวหลังกลาง', shortLabel: 'หลังกลาง', row: 2 },
   { id: 'R3', code: 'R3', label: 'แถวหลังขวา (ริมหน้าต่าง)', shortLabel: 'หลังขวา', row: 2 },
 ];
 
+// SUV Layout: แถวหน้า 2 คน (คนขับ 1 + ข้างคนขับ 1), แถวสอง 3 คน, แถวสาม 2 คน
 export const SUV_SEAT_POSITIONS: SeatPositionMeta[] = [
-  { id: 'F1', code: 'F1', label: 'ข้างคนขับ (หน้าซ้าย)', shortLabel: 'ข้างคนขับ', row: 1 },
-  { id: 'M1', code: 'M1', label: 'แถวกลางซ้าย (ริมหน้าต่าง)', shortLabel: 'กลางซ้าย', row: 2 },
-  { id: 'M2', code: 'M2', label: 'แถวกลาง (เบาะกลาง)', shortLabel: 'เบาะกลาง', row: 2 },
-  { id: 'M3', code: 'M3', label: 'แถวกลางขวา (ริมหน้าต่าง)', shortLabel: 'กลางขวา', row: 2 },
-  { id: 'B1', code: 'B1', label: 'แถวหลังสุดซ้าย (แถว 3)', shortLabel: 'หลังสุดซ้าย', row: 3 },
-  { id: 'B2', code: 'B2', label: 'แถวหลังสุดขวา (แถว 3)', shortLabel: 'หลังสุดขวา', row: 3 },
+  { id: 'F1', code: 'F1', label: 'ข้างคนขับ (แถวหน้า)', shortLabel: 'ข้างคนขับ', row: 1 },
+  { id: 'M1', code: 'M1', label: 'แถวสองซ้าย (ริมหน้าต่าง)', shortLabel: 'แถวสองซ้าย', row: 2 },
+  { id: 'M2', code: 'M2', label: 'แถวสองกลาง', shortLabel: 'แถวสองกลาง', row: 2 },
+  { id: 'M3', code: 'M3', label: 'แถวสองขวา (ริมหน้าต่าง)', shortLabel: 'แถวสองขวา', row: 2 },
+  { id: 'B1', code: 'B1', label: 'แถวสามซ้าย', shortLabel: 'แถวสามซ้าย', row: 3 },
+  { id: 'B2', code: 'B2', label: 'แถวสามขวา', shortLabel: 'แถวสามขวา', row: 3 },
+];
+
+// MPV Layout (เช่น Alphard / Vellfire): แถวหน้า 2 คน (คนขับ 1 + ข้างคนขับ 1), แถวกลาง 2 คน (เบาะแยก Captain Seat), แถวหลังสุด 3 ที่นั่ง
+export const MPV_SEAT_POSITIONS: SeatPositionMeta[] = [
+  { id: 'F1', code: 'F1', label: 'ข้างคนขับ (แถวหน้า)', shortLabel: 'ข้างคนขับ', row: 1 },
+  { id: 'M1', code: 'M1', label: 'แถวกลางซ้าย (เบาะแยก)', shortLabel: 'เบาะแยกซ้าย', row: 2 },
+  { id: 'M2', code: 'M2', label: 'แถวกลางขวา (เบาะแยก)', shortLabel: 'เบาะแยกขวา', row: 2 },
+  { id: 'B1', code: 'B1', label: 'แถวหลังสุดซ้าย', shortLabel: 'หลังสุดซ้าย', row: 3 },
+  { id: 'B2', code: 'B2', label: 'แถวหลังสุดกลาง', shortLabel: 'หลังสุดกลาง', row: 3 },
+  { id: 'B3', code: 'B3', label: 'แถวหลังสุดขวา', shortLabel: 'หลังสุดขวา', row: 3 },
 ];
 
 export const CAR_SEAT_POSITIONS: SeatPositionMeta[] = [
   ...SEDAN_SEAT_POSITIONS,
   ...SUV_SEAT_POSITIONS.filter((s) => s.id !== 'F1'),
+  ...MPV_SEAT_POSITIONS.filter((s) => s.id === 'B3'),
 ];
+
+export function getSeatPositionsByType(
+  vehicleType?: VehicleSeatType,
+  totalSeats?: number
+): SeatPositionMeta[] {
+  if (vehicleType === 'mpv') {
+    return MPV_SEAT_POSITIONS;
+  }
+  if (vehicleType === 'suv' || (totalSeats && totalSeats > 4)) {
+    return SUV_SEAT_POSITIONS;
+  }
+  return SEDAN_SEAT_POSITIONS;
+}
 
 export function getSeatPositionsForRide(
   ride: Pick<RideHop, 'vehicleType' | 'totalSeats'>
 ): SeatPositionMeta[] {
-  if (ride.vehicleType === 'suv' || ride.totalSeats > 4) {
-    return SUV_SEAT_POSITIONS;
-  }
-  return SEDAN_SEAT_POSITIONS;
+  return getSeatPositionsByType(ride.vehicleType, ride.totalSeats);
 }
 
 export const VEHICLE_COLOR_OPTIONS: string[] = [
@@ -386,7 +409,7 @@ export const INITIAL_RIDES: RideHop[] = [
     hostType: 'driver',
     vehicleType: 'suv',
     carColor: 'สีขาว',
-    vehicleLabel: 'Toyota Veloz (SUV 7 ที่นั่ง) • สีขาว',
+    vehicleLabel: 'Toyota Fortuner (SUV 7 ที่นั่ง) • สีขาว',
     licensePlate: 'ทศ 9421',
     origin: 'SIIT รังสิต',
     destination: 'คอนโด B',
@@ -403,7 +426,7 @@ export const INITIAL_RIDES: RideHop[] = [
     vibes: ['K-Pop', 'สายกิน', 'อนิเมะ'],
     ig: '@nicha.de26',
     facebook: 'fb.com/nicha.siit',
-    bioNote: 'ขับรถ SUV 7 ที่นั่ง (ผังผู้โดยสาร 6 ที่นั่ง 3 แถว) กลับโซนคอนโด B ตอนนี้เลยค่ะ นั่งสบายแอร์เย็น!',
+    bioNote: 'ขับรถ SUV 7 ที่นั่ง (แถวหน้า 2 • แถวสอง 3 • แถวสาม 2) กลับโซนคอนโด B ตอนนี้เลยค่ะ นั่งสบายแอร์เย็น!',
     co2SavedKg: 1.6,
   },
   {
@@ -496,9 +519,9 @@ export const INITIAL_RIDES: RideHop[] = [
     faculty: 'SIIT • MT ปี 3',
     rating: 4.8,
     hostType: 'driver',
-    vehicleType: 'suv',
-    carColor: 'สีเงิน',
-    vehicleLabel: 'Mitsubishi Xpander (SUV 7 ที่นั่ง) • สีเงิน',
+    vehicleType: 'mpv',
+    carColor: 'สีดำ',
+    vehicleLabel: 'Toyota Alphard (MPV 7 ที่นั่ง) • สีดำ',
     licensePlate: '3ขล 9090',
     origin: 'TU Dome',
     destination: 'SIIT บางกระดี่',
@@ -509,12 +532,12 @@ export const INITIAL_RIDES: RideHop[] = [
     scheduleLabel: 'พรุ่งนี้ • 08:40 น.',
     seatsLeft: 4,
     totalSeats: 6,
-    occupiedSeats: ['F1', 'M2'],
+    occupiedSeats: ['F1', 'B2'],
     baseFare: 42,
     commissionFee: 5,
     vibes: ['Hip-Hop', 'RoV', 'สายตี้', 'สายกิน'],
     ig: '@ken_mt.tu',
-    bioNote: 'ขับรถ SUV 7 ที่นั่งออกจาก TU Dome ไปบางกระดี่ แอร์เย็น นั่งสบาย มาหารค่ารถกันครับ',
+    bioNote: 'ขับรถ MPV เบาะแยก Captain Seat (แถวหน้า 2 • แถวกลางเบาะแยก 2 • แถวหลังสุด 3) ออกจาก TU Dome ไปบางกระดี่ นั่งสบายมากครับ',
     co2SavedKg: 3.1,
   },
 ];
