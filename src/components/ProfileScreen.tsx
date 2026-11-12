@@ -102,33 +102,26 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 />
               </div>
               <div className="grid grid-cols-2 gap-1.5">
-                <select
+                <input
+                  type="text"
                   value={profile.faculty}
                   onChange={(e) =>
                     onChangeProfile({ ...profile, faculty: e.target.value })
                   }
+                  placeholder="คณะและชั้นปี"
                   aria-label="คณะและชั้นปี"
-                  className="w-full min-h-[38px] border-b border-slate-300 bg-transparent py-1 text-[11px] font-bold text-slate-700"
-                >
-                  <option value="SIIT • CPE ปี 3">SIIT • CPE ปี 3</option>
-                  <option value="SIIT • IE ปี 4">SIIT • IE ปี 4</option>
-                  <option value="SIIT • DE ปี 2">SIIT • DE ปี 2</option>
-                  <option value="SIIT • ME ปี 3">SIIT • ME ปี 3</option>
-                  <option value="TBS • มธ. ปี 2">TBS • มธ. ปี 2</option>
-                </select>
-                <select
+                  className="w-full min-h-[38px] border-b border-slate-300 bg-transparent py-1 text-[11px] font-bold text-slate-700 focus:border-orange-500 focus:outline-none"
+                />
+                <input
+                  type="text"
                   value={profile.university}
                   onChange={(e) =>
                     onChangeProfile({ ...profile, university: e.target.value })
                   }
+                  placeholder="มหาวิทยาลัย"
                   aria-label="มหาวิทยาลัย"
-                  className="w-full min-h-[38px] border-b border-slate-300 bg-transparent py-1 text-[11px] font-bold text-slate-700"
-                >
-                  <option value="ม.ธรรมศาสตร์ (SIIT)">ม.ธรรมศาสตร์ (SIIT)</option>
-                  <option value="ม.ธรรมศาสตร์ (รังสิต)">ม.ธรรมศาสตร์ (รังสิต)</option>
-                  <option value="จุฬาลงกรณ์มหาวิทยาลัย">จุฬาลงกรณ์มหาวิทยาลัย</option>
-                  <option value="มหาวิทยาลัยเกษตรศาสตร์">มหาวิทยาลัยเกษตรศาสตร์</option>
-                </select>
+                  className="w-full min-h-[38px] border-b border-slate-300 bg-transparent py-1 text-[11px] font-bold text-slate-700 focus:border-orange-500 focus:outline-none"
+                />
               </div>
             </div>
           </div>
