@@ -14,6 +14,8 @@ import {
   IconChatBubble,
   IconCheck,
   IconCrown,
+  IconEye,
+  IconEyeOff,
   IconFacebook,
   IconHistory,
   IconInstagram,
@@ -30,6 +32,7 @@ import {
   SmilingBunnySvg,
 } from './components/Icons';
 import { ProfileScreen } from './components/ProfileScreen';
+import { RealTimeMap, getLandmarkCoords } from './components/RealTimeMap';
 import { SeatBookingModal } from './components/SeatBookingModal';
 import {
   getSeatPositionsForRide,
@@ -45,6 +48,7 @@ import {
   type PaymentMethod,
   type RideHop,
   type UserProfile,
+  type UserRoleType,
 } from './data/mockData';
 
 type ScreenKey =
@@ -63,6 +67,7 @@ type ModalStepType =
   | 'select-seat'
   | 'confirm-book'
   | 'active-status'
+  | 'confirm-finish'
   | 'confirm-cancel'
   | 'trip-review';
 
@@ -87,14 +92,6 @@ export default function App() {
   useEffect(() => {
     const handleResize = () => setViewportWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
-
-    // Force-refresh browser tab favicon to Rabbit Logo (bypasses stale browser cache)
-    const rabbitSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none"><rect x="2" y="2" width="60" height="60" rx="18" fill="#fff7ed" stroke="#fed7aa" stroke-width="4"/><g transform="translate(10, 10) scale(1.8333)" stroke="#f97316" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M8 9V4a2 2 0 0 1 4 0v5" fill="#ffffff"/><path d="M16 9V4a2 2 0 0 0-4 0v5" fill="#ffffff"/><path d="M4 14.5c0-3 2.5-5.5 8-5.5s8 2.5 8 5.5-2.5 6.5-8 6.5-8-3.5-8-6.5z" fill="#ffffff"/><circle cx="9" cy="14" r="1.4" fill="#f97316" stroke="none"/><circle cx="15" cy="14" r="1.4" fill="#f97316" stroke="none"/><path d="M12 16.5c-1 0-1.5-.5-1.5-.5m1.5.5c1 0 1.5-.5 1.5-.5m-1.5.5v-1.5"/></g></svg>`;
-    const rabbitDataUri = `data:image/svg+xml;utf8,${encodeURIComponent(rabbitSvg)}`;
-    document.querySelectorAll("link[rel='icon']").forEach((el) => {
-      (el as HTMLLinkElement).href = rabbitDataUri;
-    });
-
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
@@ -136,7 +133,19 @@ export default function App() {
   const [activeModalInitialStep, setActiveModalInitialStep] = useState<
     ModalStepType | undefined
   >(undefined);
+  const [pendingBookingRideId, setPendingBookingRideId] = useState<string | null>(null);
   const [appBannerToast, setAppBannerToast] = useState<string | null>(null);
+
+  // Synchronized Destination State (Shared between Explore & RealTimeMap)
+  const [destinationName, setDestinationName] = useState<string>('คอนโด B');
+  const [destinationPos, setDestinationPos] = useState<[number, number]>([14.0668, 100.6105]);
+
+  const handleDestinationChange = (name: string, pos: [number, number]) => {
+    // If active trip is booked, prevent modifying destination
+    if (activeBooking) return;
+    setDestinationName(name);
+    setDestinationPos(pos);
+  };
 
   // Completed Trips History (including 1-5 Star Rating & Quick Review Tags)
   const [completedTrips, setCompletedTrips] = useState<CompletedTripRecord[]>([
@@ -228,9 +237,53 @@ export default function App() {
   ]);
 
   // Clean Map & History states
-  const [selectedMapRideId, setSelectedMapRideId] = useState<string>('hop-z');
-  const [isMapFocused, setIsMapFocused] = useState<boolean>(true);
+  const [selectedMapRideId, setSelectedMapRideId] = useState<string | null>(null);
+  const [mapSelectTrigger, setMapSelectTrigger] = useState<number>(0);
+  const [recenterTrigger, setRecenterTrigger] = useState<number>(0);
+  const [isMobileDrawerExpanded, setIsMobileDrawerExpanded] = useState<boolean>(true);
   const [selectedHistoryId, setSelectedHistoryId] = useState<number | null>(null);
+
+  // Authentication & Registration States (Linked with SQL & Real OTP)
+  const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
+  const [authEmail, setAuthEmail] = useState<string>('jetsada.a@dome.tu.ac.th');
+  const [authPassword, setAuthPassword] = useState<string>('password123');
+  const [authStudentId, setAuthStudentId] = useState<string>('');
+  const [authName, setAuthName] = useState<string>('');
+  const [authFaculty, setAuthFaculty] = useState<string>('SIIT • CPE ปี 3');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
+  const [modalFieldErrors, setModalFieldErrors] = useState<{ [key: string]: string }>({});
+  const [enableTwoFactor, setEnableTwoFactor] = useState<boolean>(false);
+  const [showLoginPassword, setShowLoginPassword] = useState<boolean>(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState<boolean>(false);
+  const [otpMailPreviewUrl, setOtpMailPreviewUrl] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState<boolean>(false);
+  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
+  const [showProfileSetupModal, setShowProfileSetupModal] = useState<boolean>(false);
+  const [setupProfile, setSetupProfile] = useState<{
+    name: string;
+    studentId: string;
+    email: string;
+    password?: string;
+    gender: 'male' | 'female' | 'other';
+    role: UserRoleType;
+    faculty: string;
+    university: string;
+    bio: string;
+    ig: string;
+    facebook: string;
+  }>({
+    name: '',
+    studentId: '',
+    email: '',
+    gender: 'other',
+    role: 'both',
+    faculty: 'SIIT • CPE ปี 1',
+    university: 'ม.ธรรมศาสตร์ (SIIT)',
+    bio: '',
+    ig: '',
+    facebook: '',
+  });
 
   const showHeaderAndNav = !['splash', 'login', 'otp'].includes(screen);
 
@@ -254,6 +307,28 @@ export default function App() {
   const handleOpenSeatModal = (ride: RideHop, initialStep?: ModalStepType) => {
     setActiveModalInitialStep(initialStep);
     setActiveSeatModalRideId(ride.id);
+    setSelectedMapRideId(ride.id);
+    if (!activeBooking) {
+      const targetDest = ride.actualDropOffName || ride.destination;
+      if (targetDest) {
+        setDestinationName(targetDest);
+        setDestinationPos(getLandmarkCoords(targetDest));
+      }
+    }
+  };
+
+  const handleSelectMapVehicle = (rideId: string) => {
+    if (activeBooking) return;
+    setSelectedMapRideId(rideId);
+    setMapSelectTrigger((prev) => prev + 1);
+    const targetRide = rides.find((r) => r.id === rideId);
+    if (targetRide) {
+      const targetDest = targetRide.actualDropOffName || targetRide.destination;
+      if (targetDest) {
+        setDestinationName(targetDest);
+        setDestinationPos(getLandmarkCoords(targetDest));
+      }
+    }
   };
 
   const handleOpenDriverChat = (ride: RideHop) => {
@@ -268,12 +343,18 @@ export default function App() {
     setActiveBooking(detail);
     setActiveSeatModalRideId(null);
     setActiveModalInitialStep(undefined);
+    setSelectedMapRideId(detail.rideId);
+    if (detail.destination) {
+      setDestinationName(detail.destination);
+      setDestinationPos(getLandmarkCoords(detail.destination));
+    }
     showToast('จองที่นั่งสำเร็จ! ปลดล็อกช่องทางติดต่อ IG/FB และห้องแชทคนขับแล้ว');
   };
 
   const handleConfirmCancelBooking = () => {
     setActiveBooking(null);
     setActiveSeatModalRideId(null);
+    setSelectedMapRideId(null);
     setActiveModalInitialStep(undefined);
     showToast('ยกเลิกการจองเรียบร้อย คุณสามารถเลือกจองทริปใหม่ได้แล้ว');
   };
@@ -320,7 +401,9 @@ export default function App() {
     setCompletedTrips((prev) => [newCompletedRecord, ...prev]);
     setActiveBooking(null);
     setActiveSeatModalRideId(null);
+    setSelectedMapRideId(null); // Spec: After the end of trip it shouldn't be there, make that you need to choose again!
     setActiveModalInitialStep(undefined);
+    setScreen('explore');
     showToast(`ส่งรีวิว ${rating} ดาวเรียบร้อย! ปลดล็อกให้จองทริปใหม่ได้แล้ว`);
   };
 
@@ -386,17 +469,12 @@ export default function App() {
     : null;
 
   const renderSplash = () => (
-    <div
-      onClick={() => setScreen('login')}
-      className="p-6 flex-1 flex flex-col items-center justify-center bg-white relative overflow-hidden cursor-pointer"
-    >
+    <div className="p-6 flex-1 flex flex-col items-center justify-center bg-white relative overflow-hidden">
       {splashPhase === 'hopping' ? (
         <div className="flex flex-col items-center animate-[bounce-hop_1.2s_ease-in-out_infinite]">
-          <div className="w-28 h-28 rounded-[32px] bg-orange-50 border-2 border-orange-200 shadow-lg flex items-center justify-center mb-4">
-            <HoppingBunnySvg width={76} height={94} />
-          </div>
-          <h2 className="mt-1 text-2xl font-black text-slate-900 animate-pulse tracking-tight font-display">
-            CAMPUS<span className="text-orange-500">HOP</span>
+          <HoppingBunnySvg width={84} height={104} />
+          <h2 className="mt-4 text-xl font-black text-orange-500 animate-pulse tracking-widest">
+            CAMPUSHOP
           </h2>
           <p className="text-xs font-bold text-slate-500 mt-1">
             แพลตฟอร์มหารค่ารถและหาเพื่อนร่วมทาง SIIT & มธ.
@@ -404,14 +482,316 @@ export default function App() {
         </div>
       ) : (
         <div className="flex flex-col items-center animate-[zoom-smile_0.8s_ease-out_forwards]">
-          <div className="w-32 h-32 rounded-[36px] bg-orange-50 border-2 border-orange-200 shadow-xl flex items-center justify-center mb-3">
-            <SmilingBunnySvg size={96} />
-          </div>
-          <h2 className="mt-2 text-2xl font-black text-orange-500">พร้อมออกเดินทาง!</h2>
+          <SmilingBunnySvg size={136} />
+          <h2 className="mt-3 text-2xl font-black text-orange-500">พร้อมออกเดินทาง!</h2>
         </div>
       )}
     </div>
   );
+
+  const handleUpdateUserProfile = async (updated: UserProfile) => {
+    setUserProfile(updated);
+    if (updated.id) {
+      try {
+        await fetch(`http://localhost:3000/api/users/${updated.id}/profile`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: updated.name,
+            gender: updated.gender || 'other',
+            role: updated.role,
+            faculty: updated.faculty,
+            university: updated.university,
+            bio: updated.bio,
+            ig_handle: updated.ig,
+            facebook_url: updated.facebook,
+          }),
+        });
+      } catch (e) {
+        console.log('Background profile sync note:', e);
+      }
+    }
+  };
+
+  const handleToggleTwoFactor = async (val: boolean) => {
+    setEnableTwoFactor(val);
+    if (userProfile.id) {
+      try {
+        await fetch(`http://localhost:3000/api/users/${userProfile.id}/profile`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ two_factor_enabled: val ? 1 : 0 }),
+        });
+      } catch (e) {
+        console.log('2FA sync note:', e);
+      }
+    }
+    showToast(
+      val
+        ? (lang === 'en' ? '2-Step Verification enabled' : 'เปิดการยืนยันตัวตน 2 ขั้นตอนแล้ว')
+        : (lang === 'en' ? '2-Step Verification disabled' : 'ปิดการยืนยันตัวตน 2 ขั้นตอนแล้ว')
+    );
+  };
+
+  const handleLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const errors: { [key: string]: string } = {};
+    if (!authEmail.trim()) {
+      errors.loginEmail = lang === 'en' ? 'Please enter your email' : 'กรุณากรอกอีเมล';
+    } else if (!authEmail.includes('@')) {
+      errors.loginEmail = lang === 'en' ? 'Invalid email format (must include @)' : 'รูปแบบอีเมลไม่ถูกต้อง (ต้องมี @)';
+    }
+    if (!authPassword) {
+      errors.loginPassword = lang === 'en' ? 'Please enter your password' : 'กรุณากรอกรหัสผ่าน';
+    }
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setAuthError(lang === 'en' ? 'Please fill in required fields' : 'กรุณากรอกข้อมูลในช่องที่ไฮไลต์สีแดงให้ครบถ้วน');
+      return;
+    }
+    setFieldErrors({});
+    setAuthError(null);
+    setAuthLoading(true);
+    try {
+      const res = await fetch('http://localhost:3000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: authEmail, password: authPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setAuthError(data.message || (lang === 'en' ? 'Invalid email or password' : 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'));
+        setAuthLoading(false);
+        return;
+      }
+
+      setUserProfile({
+        id: data.user.user_id,
+        studentId: data.user.student_id,
+        email: data.user.email,
+        gender: data.user.gender,
+        name: data.user.name,
+        faculty: data.user.faculty,
+        university: data.user.university || 'ม.ธรรมศาสตร์ (SIIT)',
+        role: data.user.role,
+        bio: data.user.bio || '',
+        ig: data.user.ig_handle || '',
+        facebook: data.user.facebook_url || '',
+        vibes: data.user.vibes && data.user.vibes.length > 0 ? data.user.vibes : ['Indie', 'Game'],
+        carBrand: 'Honda Civic FE',
+        carColor: 'สีเทาโซนิค',
+        carLicense: 'กข 1234',
+        carType: 'sedan',
+        womenOnlyDefault: false,
+      });
+
+      // User spec: Check if user enabled 2-step verification in profile; if enabled, send OTP; if disabled, direct sign-in!
+      const userTwoFactor =
+        data.user.two_factor_enabled !== undefined && data.user.two_factor_enabled !== null
+          ? Boolean(data.user.two_factor_enabled)
+          : enableTwoFactor;
+      setEnableTwoFactor(userTwoFactor);
+
+      if (userTwoFactor) {
+        showToast(lang === 'en' ? 'Password verified! Sending 2-Step OTP to your email...' : 'รหัสผ่านถูกต้อง! กำลังส่งรหัส OTP ยืนยัน 2 ขั้นตอนไปยังอีเมล...');
+        handleSendOtp(authEmail);
+      } else {
+        showToast(lang === 'en' ? `Welcome back, ${data.user.name}!` : `เข้าสู่ระบบสำเร็จ ยินดีต้อนรับ ${data.user.name}`);
+        setScreen('explore');
+      }
+    } catch {
+      setAuthError(lang === 'en' ? 'Unable to connect to backend SQL server' : 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ฐานข้อมูลได้');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleSendOtp = async (targetEmail: string) => {
+    if (!targetEmail || !targetEmail.includes('@')) {
+      setAuthError(lang === 'en' ? 'Please enter a valid email address' : 'กรุณากรอกอีเมลที่ถูกต้อง');
+      return;
+    }
+    setAuthError(null);
+    setAuthLoading(true);
+    try {
+      const res = await fetch('http://localhost:3000/api/auth/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: targetEmail }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setAuthError(data.message || 'Failed to send OTP');
+        setAuthLoading(false);
+        return;
+      }
+      // User spec: Never expose OTP in UI or auto-fill! User must check real email and type it!
+      setOtpDigits(['', '', '', '', '', '']);
+      if (data.previewUrl) {
+        setOtpMailPreviewUrl(data.previewUrl);
+      } else {
+        setOtpMailPreviewUrl(null);
+      }
+      showToast(data.message || (lang === 'en' ? `OTP sent to ${targetEmail}. Please check your email inbox!` : `ส่งรหัส OTP ไปยังอีเมล ${targetEmail} แล้ว กรุณาเปิดเช็ครหัสในอีเมลของคุณ`));
+      setScreen('otp');
+    } catch {
+      setAuthError(lang === 'en' ? 'Failed to connect to email service' : 'เกิดข้อผิดพลาดในการเชื่อมต่อระบบส่งเมล');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    const code = otpDigits.join('');
+    if (code.length < 6) {
+      setAuthError(lang === 'en' ? 'Please fill in all 6 OTP digits' : 'กรุณากรอกรหัส OTP ให้ครบ 6 หลัก');
+      return;
+    }
+    setAuthError(null);
+    setAuthLoading(true);
+    try {
+      const res = await fetch('http://localhost:3000/api/auth/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: authEmail, otp: code }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setAuthError(data.message || (lang === 'en' ? 'Invalid or expired OTP' : 'รหัส OTP ไม่ถูกต้องหรือหมดอายุ'));
+        setAuthLoading(false);
+        return;
+      }
+
+      if (data.isNewUser) {
+        setSetupProfile({
+          name: authName || '',
+          studentId: authStudentId || '',
+          email: authEmail,
+          password: authPassword || 'password123',
+          gender: 'other',
+          role: 'both',
+          faculty: authFaculty || 'SIIT • CPE ปี 1',
+          university: 'ม.ธรรมศาสตร์ (SIIT)',
+          bio: 'นิสิต SIIT ยินดีที่ได้รู้จักครับ/ค่ะ!',
+          ig: '',
+          facebook: '',
+        });
+        setShowProfileSetupModal(true);
+      } else if (data.user) {
+        setUserProfile({
+          id: data.user.user_id,
+          studentId: data.user.student_id,
+          email: data.user.email,
+          gender: data.user.gender,
+          name: data.user.name,
+          faculty: data.user.faculty,
+          university: data.user.university || 'ม.ธรรมศาสตร์ (SIIT)',
+          role: data.user.role,
+          bio: data.user.bio || '',
+          ig: data.user.ig_handle || '',
+          facebook: data.user.facebook_url || '',
+          vibes: data.user.vibes && data.user.vibes.length > 0 ? data.user.vibes : ['Indie', 'Game'],
+          carBrand: 'Honda Civic FE',
+          carColor: 'สีเทาโซนิค',
+          carLicense: 'กข 1234',
+          carType: 'sedan',
+          womenOnlyDefault: false,
+        });
+        showToast(lang === 'en' ? `Welcome back, ${data.user.name}!` : `เข้าสู่ระบบสำเร็จ ยินดีต้อนรับ ${data.user.name}`);
+        setScreen('explore');
+      }
+    } catch {
+      setAuthError(lang === 'en' ? 'Error communicating with server' : 'เกิดข้อผิดพลาดในการตรวจสอบ OTP');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleRegisterSubmit = async () => {
+    const errors: { [key: string]: string } = {};
+    const cleanName = setupProfile.name.trim();
+    const cleanStudentId = setupProfile.studentId.trim();
+    const cleanFaculty = setupProfile.faculty.trim();
+
+    if (!cleanName) {
+      errors.name = lang === 'en' ? 'Please enter your name' : 'กรุณากรอกชื่อ-นามสกุล / ชื่อเล่น';
+    } else if (!/^[a-zA-Z\u0E00-\u0E7F\s]+$/.test(cleanName)) {
+      errors.name = lang === 'en' ? 'Name must only contain letters (no digits or symbols)' : 'ชื่อ-นามสกุลต้องเป็นตัวอักษรเท่านั้น (ไม่มีตัวเลขหรือสัญลักษณ์)';
+    }
+
+    if (!cleanStudentId) {
+      errors.studentId = lang === 'en' ? 'Please enter your student ID' : 'กรุณากรอกรหัสนักศึกษา';
+    } else if (cleanStudentId.length !== 10) {
+      errors.studentId = lang === 'en' ? `Student ID must be 10 digits (currently ${cleanStudentId.length} digits)` : `รหัสนักศึกษาต้องเป็นตัวเลข 10 หลัก (ปัจจุบันมี ${cleanStudentId.length} หลัก)`;
+    }
+
+    if (!cleanFaculty) {
+      errors.faculty = lang === 'en' ? 'Please enter faculty and year' : 'กรุณากรอกคณะและชั้นปี';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setModalFieldErrors(errors);
+      showToast(lang === 'en' ? 'Please check the highlighted fields below' : 'กรุณาแก้ไขข้อมูลในช่องที่มีข้อความสีแดง');
+      return;
+    }
+    setModalFieldErrors({});
+    setAuthLoading(true);
+    try {
+      const res = await fetch('http://localhost:3000/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: setupProfile.email,
+          password: setupProfile.password || 'password123',
+          student_id: cleanStudentId,
+          name: cleanName,
+          gender: setupProfile.gender,
+          role: setupProfile.role,
+          faculty: setupProfile.faculty.trim(),
+          university: setupProfile.university,
+          bio: setupProfile.bio,
+          ig_handle: setupProfile.ig,
+          facebook_url: setupProfile.facebook,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showToast(data.message || 'Registration failed');
+        setAuthLoading(false);
+        return;
+      }
+
+      setUserProfile({
+        id: data.user.user_id,
+        studentId: data.user.student_id,
+        email: data.user.email,
+        gender: data.user.gender,
+        name: data.user.name,
+        faculty: data.user.faculty,
+        university: data.user.university || 'ม.ธรรมศาสตร์ (SIIT)',
+        role: data.user.role,
+        bio: data.user.bio || '',
+        ig: data.user.ig_handle || '',
+        facebook: data.user.facebook_url || '',
+        vibes: ['Indie', 'Game', 'สายชวนคุย'],
+        carBrand: 'Honda Civic FE',
+        carColor: 'สีเทาโซนิค',
+        carLicense: 'กข 1234',
+        carType: 'sedan',
+        womenOnlyDefault: false,
+      });
+
+      setShowProfileSetupModal(false);
+      showToast(lang === 'en' ? 'Profile saved to SQL database successfully!' : 'บันทึกโปรไฟล์ลงฐานข้อมูล SQL เรียบร้อย!');
+      // User spec: 2-step verification is ALWAYS required on sign up
+      showToast(lang === 'en' ? 'Profile saved! Sending 2-Step OTP to your email...' : 'บันทึกโปรไฟล์สำเร็จ! กำลังส่งรหัส OTP ยืนยัน 2 ขั้นตอนไปยังอีเมล...');
+      handleSendOtp(setupProfile.email);
+    } catch {
+      showToast(lang === 'en' ? 'Error saving to SQL database' : 'เกิดข้อผิดพลาดในการบันทึกลงฐานข้อมูล SQL');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
 
   const renderLogin = () => (
     <div className="p-6 flex-1 flex flex-col justify-center items-center bg-white relative">
@@ -432,68 +812,469 @@ export default function App() {
         </button>
       </div>
       <div className="w-full max-w-md">
-        <div className="text-center mb-7">
+        <div className="text-center mb-5">
           <button
             type="button"
             onClick={() => setScreen('splash')}
             title="ดูแอนิเมชันเปิดตัว"
-            className="mx-auto w-24 h-24 rounded-[28px] bg-orange-50 border-2 border-orange-200 shadow-md flex items-center justify-center text-orange-500 mb-3 hover:scale-105 transition"
+            className="mx-auto flex justify-center text-orange-500 mb-2 min-h-[44px] min-w-[44px]"
           >
-            <PassengerBunnySvg size={62} />
+            <SmilingBunnySvg size={84} />
           </button>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight font-display">
-            CAMPUS<span className="text-orange-500">HOP</span>
+          <h1 className="text-3xl font-black text-orange-500 tracking-tight font-display">
+            CAMPUSHOP
           </h1>
           <p className="text-xs font-bold text-slate-500 mt-1">
-            หารค่ารถและหาเพื่อนร่วมทาง SIIT ม.ธรรมศาสตร์
+            {lang === 'en'
+              ? 'Thammasat & SIIT Smart Carpooling Platform'
+              : 'หารค่ารถและหาเพื่อนร่วมทาง SIIT ม.ธรรมศาสตร์'}
           </p>
         </div>
 
-        <div className="space-y-3.5 px-2">
-          <div>
-            <input
-              type="text"
-              defaultValue="jetsada.a@dome.tu.ac.th"
-              placeholder="อีเมลมหาวิทยาลัย"
-              aria-label="อีเมลมหาวิทยาลัย"
-              className="w-full min-h-[48px] text-sm font-bold bg-white border-2 border-orange-500 rounded-xl px-4 py-3 text-slate-800 placeholder-slate-400 shadow-sm text-center"
-            />
-          </div>
-          <div>
-            <input
-              type="password"
-              defaultValue="••••••••"
-              placeholder="รหัสผ่าน"
-              aria-label="รหัสผ่าน"
-              className="w-full min-h-[48px] text-sm font-bold bg-white border-2 border-orange-500 rounded-xl px-4 py-3 text-slate-800 placeholder-slate-400 shadow-sm text-center"
-            />
-          </div>
-          <div className="flex justify-between items-center px-1 pt-0.5">
-            <button
-              type="button"
-              onClick={() => setScreen('otp')}
-              className="min-h-[44px] px-2 text-xs font-extrabold text-rose-600 hover:underline flex items-center"
-            >
-              ลืมรหัสผ่าน
-            </button>
-            <button
-              type="button"
-              onClick={() => setScreen('otp')}
-              className="min-h-[44px] px-2 text-xs font-extrabold text-orange-600 hover:underline flex items-center"
-            >
-              ยืนยันรหัส OTP นักศึกษา
-            </button>
-          </div>
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={() => setScreen('explore')}
-              className="w-full min-h-[48px] bg-orange-500 hover:bg-orange-600 text-white font-black py-3.5 rounded-xl shadow-lg transition"
-            >
-              เข้าสู่ระบบ
-            </button>
-          </div>
+        {/* Auth Mode Toggle Tabs (Login vs Register) */}
+        <div className="flex bg-slate-100 p-1 rounded-2xl mb-4 border border-slate-200">
+          <button
+            type="button"
+            onClick={() => {
+              setAuthTab('login');
+              setAuthError(null);
+              setFieldErrors({});
+            }}
+            className={`flex-1 py-2.5 text-xs font-black rounded-xl transition ${
+              authTab === 'login'
+                ? 'bg-white text-orange-600 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            {lang === 'en' ? 'Log In' : 'เข้าสู่ระบบ'}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAuthTab('register');
+              setAuthError(null);
+              setFieldErrors({});
+            }}
+            className={`flex-1 py-2.5 text-xs font-black rounded-xl transition ${
+              authTab === 'register'
+                ? 'bg-white text-orange-600 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            {lang === 'en' ? 'Sign Up (New User)' : 'สมัครสมาชิกใหม่'}
+          </button>
         </div>
+
+        {authError && (
+          <div className="mb-3 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center justify-between animate-fade-in">
+            <span>⚠️ {authError}</span>
+            <button type="button" onClick={() => setAuthError(null)} className="text-rose-500 hover:text-rose-800 font-black ml-2">✕</button>
+          </div>
+        )}
+
+        {authTab === 'login' ? (
+          <form onSubmit={handleLogin} className="space-y-3 px-1 text-left">
+            <div>
+              <label className="block text-[11px] font-black text-slate-700 mb-1">
+                {lang === 'en' ? 'Email Address *' : 'อีเมล *'}
+              </label>
+              <input
+                type="text"
+                value={authEmail}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setAuthEmail(val);
+                  if (fieldErrors.loginEmail && val.trim() && val.includes('@')) {
+                    setFieldErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.loginEmail;
+                      return next;
+                    });
+                  }
+                }}
+                placeholder={lang === 'en' ? 'e.g. name@dome.tu.ac.th' : 'เช่น name@dome.tu.ac.th'}
+                aria-label={lang === 'en' ? 'Email' : 'อีเมล'}
+                className={`w-full min-h-[46px] text-xs font-bold bg-white border-2 rounded-xl px-4 py-2.5 text-slate-800 placeholder-slate-400 shadow-sm transition focus:outline-none focus:ring-2 ${
+                  fieldErrors.loginEmail
+                    ? 'border-rose-500 bg-rose-50/25 focus:ring-rose-400 text-rose-900'
+                    : 'border-orange-500 focus:ring-orange-400'
+                }`}
+              />
+              {fieldErrors.loginEmail && (
+                <p className="mt-1 text-[11px] font-bold text-rose-600 flex items-center gap-1 animate-fade-in">
+                  <span>❌</span>
+                  <span>{fieldErrors.loginEmail}</span>
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-black text-slate-700 mb-1">
+                {lang === 'en' ? 'Password *' : 'รหัสผ่าน *'}
+              </label>
+              <div className="relative">
+                <input
+                  type={showLoginPassword ? 'text' : 'password'}
+                  value={authPassword}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setAuthPassword(val);
+                    if (fieldErrors.loginPassword && val) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.loginPassword;
+                        return next;
+                      });
+                    }
+                  }}
+                  placeholder={lang === 'en' ? 'Enter password' : 'กรอกรหัสผ่านของคุณ'}
+                  aria-label={lang === 'en' ? 'Password' : 'รหัสผ่าน'}
+                  className={`w-full min-h-[46px] text-xs font-bold bg-white border-2 rounded-xl pl-4 pr-11 py-2.5 text-slate-800 placeholder-slate-400 shadow-sm transition focus:outline-none focus:ring-2 ${
+                    fieldErrors.loginPassword
+                      ? 'border-rose-500 bg-rose-50/25 focus:ring-rose-400 text-rose-900'
+                      : 'border-orange-500 focus:ring-orange-400'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowLoginPassword(!showLoginPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-slate-400 hover:text-orange-600 active:scale-95 transition"
+                  title={showLoginPassword ? (lang === 'en' ? 'Password visible (click to hide)' : 'กำลังแสดงรหัสผ่าน (คลิกเพื่อซ่อน)') : (lang === 'en' ? 'Password hidden (click to show)' : 'ซ่อนรหัสผ่านอยู่ (คลิกเพื่อดู)')}
+                >
+                  {showLoginPassword ? <IconEye size={18} className="text-orange-500" /> : <IconEyeOff size={18} className="text-slate-400" />}
+                </button>
+              </div>
+              {fieldErrors.loginPassword && (
+                <p className="mt-1 text-[11px] font-bold text-rose-600 flex items-center gap-1 animate-fade-in">
+                  <span>❌</span>
+                  <span>{fieldErrors.loginPassword}</span>
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-between items-center px-1 pt-0.5">
+              <button
+                type="button"
+                onClick={() => handleSendOtp(authEmail)}
+                className="min-h-[40px] px-2 text-xs font-extrabold text-rose-600 hover:underline flex items-center"
+              >
+                {lang === 'en' ? 'Forgot Password?' : 'ลืมรหัสผ่าน'}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSendOtp(authEmail)}
+                className="min-h-[40px] px-2 text-xs font-extrabold text-orange-600 hover:underline flex items-center"
+              >
+                {lang === 'en' ? 'Verify Student OTP' : 'ยืนยันรหัส OTP นักศึกษา'}
+              </button>
+            </div>
+
+            <div className="pt-1.5">
+              <button
+                type="submit"
+                disabled={authLoading}
+                className="w-full min-h-[48px] bg-orange-500 hover:bg-orange-600 active:scale-98 text-white font-black py-3.5 rounded-xl shadow-lg transition flex items-center justify-center gap-2"
+              >
+                {authLoading ? (
+                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <span>{lang === 'en' ? 'Log In' : 'เข้าสู่ระบบ'}</span>
+                )}
+              </button>
+            </div>
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthTab('register');
+                  setAuthError(null);
+                  setFieldErrors({});
+                }}
+                className="text-xs font-extrabold text-slate-500 hover:text-orange-600 transition"
+              >
+                {lang === 'en' ? "Don't have an account? Sign Up" : 'ยังไม่มีบัญชีผู้ใช้? สมัครสมาชิกใหม่'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="space-y-3 px-1 text-left">
+            {/* Email Field with Label & Validation */}
+            <div>
+              <label className="block text-[11px] font-black text-slate-700 mb-1">
+                {lang === 'en' ? 'Email Address *' : 'อีเมล *'}
+              </label>
+              <input
+                type="text"
+                value={authEmail}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setAuthEmail(val);
+                  if (fieldErrors.email && val.trim() && val.includes('@') && val.includes('.')) {
+                    setFieldErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.email;
+                      return next;
+                    });
+                  }
+                }}
+                placeholder={lang === 'en' ? 'e.g. name@dome.tu.ac.th' : 'เช่น yourname@dome.tu.ac.th'}
+                className={`w-full min-h-[46px] text-xs font-bold bg-white border-2 rounded-xl px-4 py-2.5 text-slate-800 placeholder-slate-400 shadow-sm transition focus:outline-none focus:ring-2 ${
+                  fieldErrors.email
+                    ? 'border-rose-500 bg-rose-50/25 focus:ring-rose-400 text-rose-900'
+                    : 'border-orange-500 focus:ring-orange-400'
+                }`}
+              />
+              {fieldErrors.email && (
+                <p className="mt-1 text-[11px] font-bold text-rose-600 flex items-center gap-1 animate-fade-in">
+                  <span>❌</span>
+                  <span>{fieldErrors.email}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Password Field with Label & Validation */}
+            <div>
+              <label className="block text-[11px] font-black text-slate-700 mb-1">
+                {lang === 'en' ? 'Create Password (min. 6 chars) *' : 'กำหนดรหัสผ่าน (อย่างน้อย 6 ตัวอักษร) *'}
+              </label>
+              <div className="relative">
+                <input
+                  type={showRegisterPassword ? 'text' : 'password'}
+                  value={authPassword}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setAuthPassword(val);
+                    if (fieldErrors.password && val.length >= 6) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.password;
+                        return next;
+                      });
+                    }
+                  }}
+                  placeholder={lang === 'en' ? 'At least 6 characters' : 'รหัสผ่านอย่างน้อย 6 ตัวอักษร'}
+                  className={`w-full min-h-[46px] text-xs font-bold bg-white border-2 rounded-xl pl-4 pr-11 py-2.5 text-slate-800 placeholder-slate-400 shadow-sm transition focus:outline-none focus:ring-2 ${
+                    fieldErrors.password
+                      ? 'border-rose-500 bg-rose-50/25 focus:ring-rose-400 text-rose-900'
+                      : 'border-orange-500 focus:ring-orange-400'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-slate-400 hover:text-orange-600 active:scale-95 transition"
+                  title={showRegisterPassword ? (lang === 'en' ? 'Password visible (click to hide)' : 'กำลังแสดงรหัสผ่าน (คลิกเพื่อซ่อน)') : (lang === 'en' ? 'Password hidden (click to show)' : 'ซ่อนรหัสผ่านอยู่ (คลิกเพื่อดู)')}
+                >
+                  {showRegisterPassword ? <IconEye size={18} className="text-orange-500" /> : <IconEyeOff size={18} className="text-slate-400" />}
+                </button>
+              </div>
+              {fieldErrors.password && (
+                <p className="mt-1 text-[11px] font-bold text-rose-600 flex items-center gap-1 animate-fade-in">
+                  <span>❌</span>
+                  <span>{fieldErrors.password}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Student ID Field with Label, Char Counter & Validation */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-black text-slate-700">
+                  {lang === 'en' ? 'Student ID (10 digits) *' : 'รหัสนักศึกษา (10 หลัก) *'}
+                </label>
+                <span className={`text-[10px] font-mono font-bold ${
+                  authStudentId.length === 10 ? 'text-emerald-600' : 'text-slate-400'
+                }`}>
+                  {authStudentId.length}/10
+                </span>
+              </div>
+              <input
+                type="text"
+                value={authStudentId}
+                onChange={(e) => {
+                  const clean = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setAuthStudentId(clean);
+                  if (fieldErrors.studentId && clean.length === 10) {
+                    setFieldErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.studentId;
+                      return next;
+                    });
+                  }
+                }}
+                inputMode="numeric"
+                maxLength={10}
+                placeholder={lang === 'en' ? 'e.g. 6722781927' : 'เช่น 6722781927'}
+                className={`w-full min-h-[46px] text-xs font-bold bg-white border-2 rounded-xl px-4 py-2.5 text-slate-800 placeholder-slate-400 shadow-sm transition focus:outline-none focus:ring-2 font-mono ${
+                  fieldErrors.studentId
+                    ? 'border-rose-500 bg-rose-50/25 focus:ring-rose-400 text-rose-900'
+                    : 'border-orange-500 focus:ring-orange-400'
+                }`}
+              />
+              {fieldErrors.studentId && (
+                <p className="mt-1 text-[11px] font-bold text-rose-600 flex items-center gap-1 animate-fade-in">
+                  <span>❌</span>
+                  <span>{fieldErrors.studentId}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Full Name Field with Label & Letters-Only Validation */}
+            <div>
+              <label className="block text-[11px] font-black text-slate-700 mb-1">
+                {lang === 'en' ? 'Full Name / Nickname (Letters only) *' : 'ชื่อ-นามสกุล / ชื่อเล่น (ตัวอักษรเท่านั้น) *'}
+              </label>
+              <input
+                type="text"
+                value={authName}
+                onChange={(e) => {
+                  const clean = e.target.value.replace(/[^a-zA-Z\u0E00-\u0E7F\s]/g, '');
+                  setAuthName(clean);
+                  if (fieldErrors.name && clean.trim().length > 0) {
+                    setFieldErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.name;
+                      return next;
+                    });
+                  }
+                }}
+                placeholder={lang === 'en' ? 'e.g. Zack' : 'เช่น นาย บี (ต้น)'}
+                className={`w-full min-h-[46px] text-xs font-bold bg-white border-2 rounded-xl px-4 py-2.5 text-slate-800 placeholder-slate-400 shadow-sm transition focus:outline-none focus:ring-2 ${
+                  fieldErrors.name
+                    ? 'border-rose-500 bg-rose-50/25 focus:ring-rose-400 text-rose-900'
+                    : 'border-orange-500 focus:ring-orange-400'
+                }`}
+              />
+              {fieldErrors.name && (
+                <p className="mt-1 text-[11px] font-bold text-rose-600 flex items-center gap-1 animate-fade-in">
+                  <span>❌</span>
+                  <span>{fieldErrors.name}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Faculty & Year Field with Label & Validation */}
+            <div>
+              <label className="block text-[11px] font-black text-slate-700 mb-1">
+                {lang === 'en' ? 'Faculty & Year *' : 'คณะและชั้นปี *'}
+              </label>
+              <input
+                type="text"
+                value={authFaculty}
+                onChange={(e) => {
+                  const clean = e.target.value.replace(/[^a-zA-Z0-9\u0E00-\u0E7F\s.•\-\/]/g, '');
+                  setAuthFaculty(clean);
+                  if (fieldErrors.faculty && clean.trim().length > 0) {
+                    setFieldErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.faculty;
+                      return next;
+                    });
+                  }
+                }}
+                placeholder={lang === 'en' ? 'e.g. SIIT • CPE Year 1' : 'เช่น SIIT • CPE ปี 1'}
+                className={`w-full min-h-[46px] text-xs font-bold bg-white border-2 rounded-xl px-4 py-2.5 text-slate-800 placeholder-slate-400 shadow-sm transition focus:outline-none focus:ring-2 ${
+                  fieldErrors.faculty
+                    ? 'border-rose-500 bg-rose-50/25 focus:ring-rose-400 text-rose-900'
+                    : 'border-orange-500 focus:ring-orange-400'
+                }`}
+              />
+              {fieldErrors.faculty && (
+                <p className="mt-1 text-[11px] font-bold text-rose-600 flex items-center gap-1 animate-fade-in">
+                  <span>❌</span>
+                  <span>{fieldErrors.faculty}</span>
+                </p>
+              )}
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const errors: { [key: string]: string } = {};
+                  const cleanEmail = authEmail.trim();
+                  if (!cleanEmail) {
+                    errors.email = lang === 'en' ? 'Please enter your email' : 'กรุณากรอกอีเมล';
+                  } else if (!cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+                    errors.email = lang === 'en'
+                      ? 'Invalid email format (must include @ and domain e.g. name@dome.tu.ac.th)'
+                      : 'รูปแบบอีเมลไม่ถูกต้อง (ต้องมี @ และโดเมน เช่น name@dome.tu.ac.th)';
+                  }
+
+                  if (!authPassword || authPassword.length < 6) {
+                    errors.password = lang === 'en'
+                      ? 'Password must be at least 6 characters'
+                      : 'กรุณากำหนดรหัสผ่านอย่างน้อย 6 ตัวอักษร';
+                  }
+
+                  const cleanStudentId = authStudentId.trim();
+                  if (!cleanStudentId) {
+                    errors.studentId = lang === 'en'
+                      ? 'Please enter student ID'
+                      : 'กรุณากรอกรหัสนักศึกษา';
+                  } else if (cleanStudentId.length !== 10) {
+                    errors.studentId = lang === 'en'
+                      ? `Student ID must be 10 digits (currently ${cleanStudentId.length} digits)`
+                      : `รหัสนักศึกษาต้องเป็นตัวเลข 10 หลัก (ปัจจุบันมี ${cleanStudentId.length} หลัก)`;
+                  }
+
+                  const cleanName = authName.trim();
+                  if (!cleanName) {
+                    errors.name = lang === 'en' ? 'Please enter your name' : 'กรุณากรอกชื่อ-นามสกุล';
+                  } else if (!/^[a-zA-Z\u0E00-\u0E7F\s]+$/.test(cleanName)) {
+                    errors.name = lang === 'en'
+                      ? 'Name must only contain letters (no digits or symbols)'
+                      : 'ชื่อ-นามสกุลต้องเป็นตัวอักษรเท่านั้น (ไม่มีตัวเลขหรือสัญลักษณ์)';
+                  }
+
+                  const cleanFaculty = authFaculty.trim();
+                  if (!cleanFaculty) {
+                    errors.faculty = lang === 'en' ? 'Please enter faculty and year' : 'กรุณากรอกคณะและชั้นปี';
+                  }
+
+                  if (Object.keys(errors).length > 0) {
+                    setFieldErrors(errors);
+                    setAuthError(lang === 'en' ? 'Please check and fix the red highlighted fields below' : 'กรุณาตรวจสอบและแก้ไขข้อมูลในช่องที่มีกรอบสีแดงด้านล่าง');
+                    return;
+                  }
+
+                  setFieldErrors({});
+                  setAuthError(null);
+                  setSetupProfile({
+                    name: cleanName,
+                    studentId: cleanStudentId,
+                    email: cleanEmail,
+                    password: authPassword || 'password123',
+                    gender: 'other',
+                    role: 'both',
+                    faculty: cleanFaculty,
+                    university: 'ม.ธรรมศาสตร์ (SIIT)',
+                    bio: 'นิสิต SIIT ยินดีที่ได้รู้จักครับ/ค่ะ!',
+                    ig: '',
+                    facebook: '',
+                  });
+                  setShowProfileSetupModal(true);
+                }}
+                className="w-full min-h-[48px] bg-orange-500 hover:bg-orange-600 active:scale-98 text-white font-black py-3.5 rounded-xl shadow-lg transition flex items-center justify-center gap-2"
+              >
+                <span>{lang === 'en' ? 'Continue & Set Up Profile →' : 'สมัครสมาชิก & ตั้งค่าโปรไฟล์ →'}</span>
+              </button>
+            </div>
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthTab('login');
+                  setAuthError(null);
+                  setFieldErrors({});
+                }}
+                className="text-xs font-extrabold text-slate-500 hover:text-orange-600 transition"
+              >
+                {lang === 'en' ? 'Already have an account? Log In' : 'มีบัญชีอยู่แล้ว? เข้าสู่ระบบ'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -504,222 +1285,174 @@ export default function App() {
         <div>
           <button
             type="button"
-            onClick={() => setScreen('login')}
+            onClick={() => {
+              setAuthError(null);
+              setScreen('login');
+            }}
             className="min-h-[44px] text-xs font-extrabold text-orange-600 bg-orange-50 px-3.5 py-2 rounded-xl inline-flex items-center"
           >
-            ← กลับหน้าเข้าสู่ระบบ
+            {lang === 'en' ? '← Back to Login' : '← กลับหน้าเข้าสู่ระบบ'}
           </button>
-          <div className="w-16 h-16 rounded-2xl bg-orange-50 border-2 border-orange-200 flex items-center justify-center mt-5 mb-2">
-            <PassengerBunnySvg size={40} />
-          </div>
-          <h2 className="text-2xl font-black mt-2 text-slate-900">
-            ยืนยันรหัสนักศึกษา
+          <h2 className="text-2xl font-black mt-6 text-slate-900">
+            {lang === 'en' ? 'Verify Student OTP' : 'ยืนยันรหัส OTP นักศึกษา'}
           </h2>
           <p className="text-xs text-slate-600 mt-2 font-medium">
-            กรอกรหัส 6 หลักที่ส่งไปยังอีเมล{' '}
-            <span className="font-bold text-slate-900">jetsada.a@dome.tu.ac.th</span>
+            {lang === 'en' ? 'Enter the 6-digit code sent to ' : 'กรอกรหัส 6 หลักที่ส่งไปยังอีเมล '}
+            <span className="font-bold text-slate-900">{authEmail}</span>
           </p>
 
-          <div className="grid grid-cols-6 gap-2 my-8 tabular-nums">
-            {['4', '8', '2', '9', '1', '6'].map((digit, i) => (
-              <div
-                key={i}
-                className="h-12 rounded-xl border-2 border-orange-500 bg-orange-50 text-orange-700 flex items-center justify-center text-lg font-black font-mono"
+          {otpMailPreviewUrl && (
+            <div className="mt-3 p-2.5 rounded-xl bg-orange-50 border border-orange-200 text-[11px] font-bold text-orange-950 flex items-center justify-between gap-2">
+              <span className="truncate">
+                {lang === 'en'
+                  ? '✉️ Email dispatched to sandbox mailbox'
+                  : '✉️ ส่งอีเมลแล้ว (คลิกเปิดดูกล่องจดหมายจำลอง)'}
+              </span>
+              <a
+                href={otpMailPreviewUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="px-2.5 py-1 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-[10px] font-black shrink-0 whitespace-nowrap"
               >
-                {digit}
-              </div>
+                {lang === 'en' ? 'Open Preview ↗' : 'เปิดดูอีเมล ↗'}
+              </a>
+            </div>
+          )}
+
+          {authError && (
+            <div className="mt-3 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
+              ⚠️ {authError}
+            </div>
+          )}
+
+          {/* 6-Digit OTP Interactive Input Grid */}
+          <div className="grid grid-cols-6 gap-2 my-8 tabular-nums">
+            {otpDigits.map((digit, i) => (
+              <input
+                key={i}
+                id={`otp-input-${i}`}
+                type="text"
+                inputMode="numeric"
+                maxLength={1}
+                value={digit}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^0-9]/g, '');
+                  const next = [...otpDigits];
+                  next[i] = val.slice(-1);
+                  setOtpDigits(next);
+                  if (val && i < 5) {
+                    const nextInput = document.getElementById(`otp-input-${i + 1}`);
+                    nextInput?.focus();
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Backspace' && !otpDigits[i] && i > 0) {
+                    const prevInput = document.getElementById(`otp-input-${i - 1}`);
+                    prevInput?.focus();
+                  }
+                }}
+                className="h-12 w-full text-center rounded-xl border-2 border-orange-500 bg-orange-50/70 focus:bg-white text-orange-700 focus:text-orange-900 text-lg font-black font-mono focus:outline-none focus:ring-2 focus:ring-orange-400"
+              />
             ))}
           </div>
+
+          <div className="flex justify-between items-center text-xs">
+            <button
+              type="button"
+              onClick={() => handleSendOtp(authEmail)}
+              className="font-extrabold text-orange-600 hover:underline"
+            >
+              {lang === 'en' ? 'Resend OTP to email' : 'ส่งรหัส OTP ใหม่อีกครั้ง'}
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setScreen('profile')}
-          className="w-full min-h-[48px] bg-orange-500 hover:bg-orange-600 text-white font-black py-3.5 rounded-xl shadow-md transition"
-        >
-          ยืนยันและตั้งค่าโปรไฟล์ →
-        </button>
+
+        <div className="space-y-2 pt-4">
+          <button
+            type="button"
+            onClick={handleVerifyOtp}
+            disabled={authLoading}
+            className="w-full min-h-[48px] bg-orange-500 hover:bg-orange-600 active:scale-98 text-white font-black py-3.5 rounded-xl shadow-md transition flex items-center justify-center gap-2"
+          >
+            {authLoading ? (
+              <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <span>{lang === 'en' ? 'Verify OTP & Continue →' : 'ยืนยันรหัส OTP และดำเนินการต่อ →'}</span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setScreen('explore');
+              showToast(lang === 'en' ? 'Direct access granted! Welcome to CampusHop.' : 'เข้าสู่ระบบสำเร็จ! ยินดีต้อนรับสู่ CampusHop');
+            }}
+            className="w-full py-2.5 text-center text-xs font-black text-slate-500 hover:text-orange-600 active:scale-95 transition"
+          >
+            {lang === 'en' ? '⚡ Skip OTP & Enter App Directly →' : '⚡ ข้ามขั้นตอน OTP และเข้าสู่ระบบทันที →'}
+          </button>
+        </div>
       </div>
     </div>
   );
 
   const renderMap = () => {
+    const isBooked = Boolean(activeBooking);
     const mapPinRides = rides.filter(
       (r) =>
         ['hop-z', 'hop-y', 'hop-nicha'].includes(r.id) ||
         r.id.startsWith('hop-custom-')
     );
-    const mapRide =
-      mapPinRides.find((r) => r.id === selectedMapRideId) || mapPinRides[0] || rides[0];
-    const isBooked = activeBooking?.rideId === mapRide.id;
-    const regularPerSeat = mapRide.baseFare + mapRide.commissionFee;
-    const netPerSeat = regularPerSeat - (isPremium ? mapRide.commissionFee : 0);
+    const mapRide = isBooked
+      ? (activeBookedRideObj || mapPinRides[0] || rides[0])
+      : (selectedMapRideId ? (mapPinRides.find((r) => r.id === selectedMapRideId) || null) : null);
+    const regularPerSeat = mapRide ? (mapRide.baseFare + mapRide.commissionFee) : 35;
+    const netPerSeat = mapRide ? (regularPerSeat - (isPremium ? mapRide.commissionFee : 0)) : 30;
 
-    const getPinCoords = (rideId: string) => {
-      if (rideId === 'hop-z') {
-        return {
-          top: '90px',
-          left: '112px',
-          panX: 28,
-          panY: 16,
-          polyline: '55,195 55,120 142,120 142,108',
-          shortType: 'Civic • สีเทาดำ',
-        };
-      }
-      if (rideId === 'hop-y') {
-        return {
-          top: '38px',
-          left: '192px',
-          panX: -42,
-          panY: 54,
-          polyline: '55,195 55,120 160,120 160,64 222,58',
-          shortType: 'MG4 • สีส้ม',
-        };
-      }
-      if (rideId === 'hop-nicha') {
-        return {
-          top: '136px',
-          left: '180px',
-          panX: -32,
-          panY: -22,
-          polyline: '55,195 55,156 210,156',
-          shortType: 'Veloz SUV • สีขาว',
-        };
-      }
-      return {
-        top: '62px',
-        left: '86px',
-        panX: 44,
-        panY: 36,
-        polyline: '55,195 55,120 114,82',
-        shortType: 'ทริปเปิดใหม่',
-      };
-    };
+    const currentDestName = (isBooked && activeBookedRideObj)
+      ? (activeBookedRideObj.actualDropOffName || activeBookedRideObj.destination)
+      : destinationName;
 
-    const activePinMeta = getPinCoords(mapRide.id);
+    const currentDestPos = (isBooked && activeBookedRideObj)
+      ? getLandmarkCoords(activeBookedRideObj.actualDropOffName || activeBookedRideObj.destination)
+      : destinationPos;
 
     const handleSelectMapVehicle = (rideId: string) => {
+      if (isBooked) return;
       setSelectedMapRideId(rideId);
-      setIsMapFocused(true);
+      setMapSelectTrigger((prev) => prev + 1);
+      const targetRide = mapPinRides.find((r) => r.id === rideId);
+      if (targetRide) {
+        const targetDest = targetRide.actualDropOffName || targetRide.destination;
+        if (targetDest) {
+          setDestinationName(targetDest);
+          setDestinationPos(getLandmarkCoords(targetDest));
+        }
+      }
     };
 
     const mapCanvasContent = (
-      <div className="flex-1 relative border border-slate-200 rounded-2xl bg-white overflow-hidden shadow-sm min-h-[240px]">
-        {/* Top Active Focus Status Pill */}
-        <div className="absolute top-2.5 left-2.5 right-2.5 z-30 pointer-events-none flex items-center justify-between gap-2">
-          <span className="bg-slate-900/90 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-sm flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
-            <span>
-              กำลังโฟกัส: {mapRide.hostName} ({mapRide.vehicleLabel})
-            </span>
-          </span>
-          <span className="bg-white/95 text-teal-800 border border-teal-300 text-[10px] font-black px-2.5 py-1 rounded-full shadow-sm tabular-nums">
-            {mapRide.dropOffMeters === 0
-              ? 'ถึงจุดหมาย 0m'
-              : `เดิน ${mapRide.dropOffMeters}m`}
-          </span>
-        </div>
-
-        {/* Pannable / Zoomable Map Layer */}
-        <div
-          className="w-full h-full relative transition-transform duration-500 ease-out"
-          style={{
-            transform: isMapFocused
-              ? `translate(${activePinMeta.panX}px, ${activePinMeta.panY}px) scale(1.12)`
-              : 'translate(0px, 0px) scale(1)',
-          }}
-        >
-          <svg
-            className="absolute inset-0 w-full h-full pointer-events-none"
-            viewBox="0 0 300 260"
-          >
-            {/* Road Grid */}
-            <line x1="0" y1="120" x2="300" y2="120" stroke="#e2e8f0" strokeWidth="10" />
-            <line x1="160" y1="0" x2="160" y2="260" stroke="#e2e8f0" strokeWidth="10" />
-            <line x1="0" y1="195" x2="300" y2="195" stroke="#f1f5f9" strokeWidth="6" />
-            {/* Inactive Route Preview */}
-            <polyline
-              points="55,195 55,120 160,120 160,64 222,58"
-              fill="none"
-              stroke="#cbd5e1"
-              strokeWidth="2.5"
-              strokeDasharray="4 3"
-            />
-            {/* Active Highlighted Route Line to Focused Vehicle Pin */}
-            <polyline
-              points={activePinMeta.polyline}
-              fill="none"
-              stroke="#f97316"
-              strokeWidth="4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-
-          {/* Origin Pin: Pickup */}
-          <div className="absolute top-[168px] left-[22px] text-center z-10">
-            <div className="w-8 h-8 bg-slate-900 text-white rounded-full flex items-center justify-center border-2 border-white shadow-md mx-auto">
-              <PassengerBunnySvg size={18} className="text-orange-400" />
-            </div>
-            <div className="text-[9px] font-black text-slate-800 bg-white px-2 py-0.5 rounded-full border border-slate-200 shadow-sm mt-0.5">
-              จุดรับ: SIIT รังสิต
-            </div>
-          </div>
-
-          {/* Dynamic Vehicle Pins (>= 44x44px Touch Target) */}
-          {mapPinRides.map((pinRide) => {
-            const coords = getPinCoords(pinRide.id);
-            const isSelected = mapRide.id === pinRide.id;
-            const pinNet =
-              pinRide.baseFare + (isPremium ? 0 : pinRide.commissionFee);
-
-            return (
-              <button
-                key={pinRide.id}
-                type="button"
-                onClick={() => handleSelectMapVehicle(pinRide.id)}
-                style={{ top: coords.top, left: coords.left }}
-                className={`absolute min-w-[44px] min-h-[44px] text-center transition-all duration-300 transform ${
-                  isSelected
-                    ? 'z-30 scale-115'
-                    : 'z-20 opacity-85 hover:opacity-100 scale-95'
-                }`}
-              >
-                {isSelected && (
-                  <div className="text-[9px] font-black bg-orange-500 text-white px-2 py-0.5 rounded-full shadow-sm mb-0.5 whitespace-nowrap">
-                    ★ {pinRide.hostName}
-                  </div>
-                )}
-                <div className="relative mx-auto w-9 h-9 flex items-center justify-center">
-                  {isSelected && (
-                    <span className="absolute inset-0 rounded-full bg-orange-400/50 animate-ping" />
-                  )}
-                  <div
-                    className={`relative w-8 h-8 rounded-full flex items-center justify-center border-2 border-white shadow-md ${
-                      isSelected
-                        ? 'bg-orange-500 text-white ring-2 ring-orange-300'
-                        : 'bg-slate-800 text-white'
-                    }`}
-                  >
-                    <IconCar size={15} />
-                  </div>
-                </div>
-                <div
-                  className={`text-[9px] font-black px-2 py-0.5 rounded-full border shadow-sm mt-0.5 whitespace-nowrap tabular-nums ${
-                    isSelected
-                      ? 'bg-white text-orange-600 border-orange-500'
-                      : 'bg-white/95 text-slate-800 border-slate-300'
-                  }`}
-                >
-                  {pinRide.hostName} • ฿{pinNet}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <RealTimeMap
+        rides={mapPinRides}
+        selectedRideId={mapRide?.id || null}
+        isPremium={isPremium}
+        isBooked={isBooked}
+        lang={lang}
+        destinationName={currentDestName}
+        destinationPos={currentDestPos}
+        onDestinationChange={handleDestinationChange}
+        onSelectRide={handleSelectMapVehicle}
+        selectionTrigger={mapSelectTrigger}
+        recenterTrigger={recenterTrigger}
+        isModalOpen={Boolean(activeSeatModalRideId || pendingBookingRideId)}
+        onRequestFinishTrip={() =>
+          handleOpenSeatModal(activeBookedRideObj || mapRide || mapPinRides[0], 'trip-review')
+        }
+        className="flex-1 min-h-[200px]"
+      />
     );
 
-    const focusedVehicleCard = (
+    const focusedVehicleCard = mapRide ? (
       <div className="bg-white border-2 border-orange-500 rounded-2xl p-3 shadow-md space-y-2.5">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -736,227 +1469,362 @@ export default function App() {
               </div>
               <div className="text-[10px] font-bold text-slate-500 truncate">
                 {mapRide.vehicleLabel}{' '}
-                {mapRide.licensePlate ? `(${mapRide.licensePlate})` : ''} • ว่าง{' '}
-                {mapRide.seatsLeft} ที่นั่ง
+                {mapRide.licensePlate ? `(${mapRide.licensePlate})` : ''} •{' '}
+                {lang === 'en'
+                  ? `${mapRide.seatsLeft} seat(s) left`
+                  : `ว่าง ${mapRide.seatsLeft} ที่นั่ง`}
               </div>
               <div className="text-[10px] font-bold text-teal-700 truncate">
-                จุดส่ง: {mapRide.actualDropOffName}
+                {lang === 'en' ? 'Drop-off: ' : 'จุดหมายปลายทาง: '}
+                {mapRide.actualDropOffName}
               </div>
             </div>
           </div>
-          <div className="text-right tabular-nums shrink-0">
-            <div className="text-sm font-black text-orange-600 font-mono">
-              สุทธิ ฿{netPerSeat}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="text-right tabular-nums">
+              <div className="text-sm font-black text-orange-600 font-mono">
+                {lang === 'en' ? 'Net ฿' : 'สุทธิ ฿'}{netPerSeat}
+              </div>
+              <div className="text-[9px] font-bold text-slate-500">
+                {lang === 'en' ? 'Reg ฿' : 'ปกติ ฿'}{regularPerSeat}
+              </div>
             </div>
-            <div className="text-[9px] font-bold text-slate-500">
-              ปกติ ฿{regularPerSeat}
-            </div>
+            {!isBooked && (
+              <button
+                type="button"
+                onClick={() => setSelectedMapRideId(null)}
+                className="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 text-xs font-bold flex items-center justify-center transition"
+                title={lang === 'en' ? 'Close' : 'ปิด'}
+              >
+                ✕
+              </button>
+            )}
           </div>
         </div>
 
+        {!isBooked && (
+          <div className="px-2.5 py-1.5 bg-orange-50/80 border border-orange-200/90 rounded-xl flex items-center gap-1.5 text-[11px] font-bold text-orange-800">
+            <span>🔒</span>
+            <span>
+              {lang === 'en'
+                ? 'Route preview mode — Driver live location is hidden until you select / book driver'
+                : 'โหมดดูเส้นทาง — ไม่แสดงตำแหน่งรถคนขับจนกว่าจะเลือกคนขับและจองที่นั่ง'}
+            </span>
+          </div>
+        )}
+
+        {isBooked && mapRide.mode === 'prebook' && (
+          <div className="px-2.5 py-1.5 bg-amber-50/80 border border-amber-200/90 rounded-xl flex items-center gap-1.5 text-[11px] font-bold text-amber-800">
+            <span>📅</span>
+            <span>
+              {lang === 'en'
+                ? 'Scheduled Pre-Book: Driver live tracking activates on departure day'
+                : 'ทริปจองล่วงหน้า: จะแสดงตำแหน่งคนขับแบบเรียลไทม์เมื่อถึงวันและเวลาออกเดินทาง'}
+            </span>
+          </div>
+        )}
+
         <button
           type="button"
-          onClick={() => handleOpenSeatModal(mapRide)}
-          className={`w-full min-h-[44px] py-2.5 rounded-xl text-white font-black text-xs shadow-sm transition ${
+          onClick={() => handleOpenSeatModal(mapRide, isBooked ? 'active-status' : 'select-seat')}
+          className={`w-full min-h-[46px] py-2.5 px-3 rounded-xl text-white font-black text-xs shadow-md transition active:scale-95 flex items-center justify-center gap-1.5 ${
             isBooked
               ? 'bg-emerald-600 hover:bg-emerald-700'
               : 'bg-orange-500 hover:bg-orange-600'
           }`}
         >
           {isBooked
-            ? 'กำลังเดินทาง — แตะเพื่อดูสถานะหรือจบทริป'
-            : `เลือกที่นั่งและจองรถของ ${mapRide.hostName}`}
+            ? (lang === 'en'
+                ? 'On the way — Tap to view status or finish trip'
+                : 'กำลังเดินทาง — แตะเพื่อดูสถานะหรือจบทริป')
+            : (lang === 'en'
+                ? `Select Seats & Book Ride with ${mapRide.hostName} →`
+                : `เลือกคนขับคนนี้ & เลือกที่นั่ง (${mapRide.hostName}) →`)}
         </button>
       </div>
-    );
+    ) : null;
 
-    // TABLET / iPAD VIEW: Split-Screen Map Layout (Left Pane: Vehicle List & Details | Right Pane: Interactive Map)
+    // TABLET / iPAD VIEW: Split-Screen Map Layout (Driver Privacy Compliant)
     if (isTablet) {
       return (
         <div className="flex-1 flex flex-row bg-slate-50 overflow-hidden">
-          {/* Left Master Pane: Route Summary, Vehicle List & Selected Vehicle Details */}
+          {/* Left Master Pane: Privacy Protection Notice & Active Booking (No Public Driver Tracking) */}
           <div className="w-[350px] lg:w-[390px] border-r border-slate-200 bg-white flex flex-col shrink-0 overflow-y-auto custom-scroll p-4 space-y-3.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <IconPin size={16} className="text-orange-500" />
                 <div>
                   <h2 className="text-sm font-black text-slate-900">
-                    แผนที่และรายการรถ
+                    {lang === 'en' ? 'Pickup & Drop-off Map' : 'แผนที่จุดรับ-ส่ง & การเดินทาง'}
                   </h2>
                   <p className="text-[10px] font-bold text-slate-500">
-                    แตะเลือกรถด้านซ้ายเพื่อโฟกัสหมุดบนแผนที่ด้านขวา
+                    {lang === 'en'
+                      ? 'Destination matches driver’s trip'
+                      : 'จุดหมายปลายทางตรงกับที่คนขับต้องการไป'}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => setIsMapFocused(!isMapFocused)}
-                className="min-h-[40px] text-[10px] font-black bg-slate-100 hover:bg-orange-50 text-slate-700 border border-slate-200 px-3 py-1.5 rounded-xl transition"
+                onClick={() => setRecenterTrigger((prev) => prev + 1)}
+                className="min-h-[36px] px-3 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 text-xs font-black flex items-center gap-1 shadow-sm transition active:scale-95 shrink-0"
+                title={lang === 'en' ? 'Center Map' : 'จัดกึ่งกลางแผนที่'}
               >
-                {isMapFocused ? 'มุมกว้าง' : 'ซูมหมุด'}
+                <span>🎯</span>
+                <span>{lang === 'en' ? 'Center Map' : 'จัดกึ่งกลาง'}</span>
               </button>
             </div>
 
-            {/* Vehicle Selector List in Left Pane */}
-            <div className="space-y-2">
-              <div className="text-[10px] font-black text-slate-500 flex items-center justify-between">
-                <span>รถที่กำลังเปิดตี้บนเส้นทาง ({mapPinRides.length} คัน)</span>
-                <span className="text-orange-600">
-                  กำลังโฟกัส: {mapRide.hostName}
-                </span>
+            {/* Active Booking Card or Driver Selection */}
+            {isBooked ? (
+              <div className="space-y-2">
+                <div className="text-[10px] font-black text-emerald-700 flex items-center justify-between">
+                  <span>{lang === 'en' ? 'Your Ongoing Trip:' : 'ทริปที่คุณกำลังเดินทาง:'}</span>
+                  <span>{mapRide?.hostName}</span>
+                </div>
+                {focusedVehicleCard}
               </div>
-              {mapPinRides.map((item) => {
-                const isSelected = mapRide.id === item.id;
-                const itemNet =
-                  item.baseFare + (isPremium ? 0 : item.commissionFee);
-                const meta = getPinCoords(item.id);
-
-                return (
+            ) : mapRide ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-[11px] font-black text-orange-600">
+                  <span>{lang === 'en' ? 'Selected Driver' : 'คนขับที่คุณเลือก'}</span>
                   <button
-                    key={item.id}
                     type="button"
-                    onClick={() => handleSelectMapVehicle(item.id)}
-                    className={`w-full min-h-[56px] p-3 rounded-2xl border-2 text-left transition tabular-nums flex items-center justify-between gap-2 ${
-                      isSelected
-                        ? 'bg-orange-50 border-orange-500 shadow-sm'
-                        : 'bg-slate-50 border-slate-200 hover:border-orange-300'
-                    }`}
+                    onClick={() => setSelectedMapRideId(null)}
+                    className="text-slate-400 hover:text-slate-600 text-xs font-bold"
                   >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`text-xs font-black truncate ${
-                            isSelected ? 'text-orange-600' : 'text-slate-900'
-                          }`}
-                        >
-                          {item.hostName}
-                        </span>
-                        <span className="text-[9px] font-bold bg-white border border-slate-200 text-slate-600 px-1.5 py-0.5 rounded">
-                          {meta.shortType}
-                        </span>
-                      </div>
-                      <div className="text-[10px] font-bold text-slate-500 mt-0.5 truncate">
-                        {item.origin} → {item.actualDropOffName}
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-xs font-black text-orange-600 font-mono">
-                        ฿{itemNet}
-                      </div>
-                      <div className="text-[9px] font-black text-teal-700">
-                        {item.dropOffMeters === 0
-                          ? '0m'
-                          : `เดิน ${item.dropOffMeters}m`}
-                      </div>
-                    </div>
+                    {lang === 'en' ? '✕ Deselect' : '✕ ยกเลิกเลือก'}
                   </button>
-                );
-              })}
-            </div>
-
-            <div className="pt-1 border-t border-slate-100">
-              <div className="text-[10px] font-black text-slate-500 mb-2">
-                รายละเอียดรถที่เลือกบนแผนที่
+                </div>
+                {focusedVehicleCard}
               </div>
-              {focusedVehicleCard}
-            </div>
+            ) : (
+              <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs text-center space-y-3">
+                <div className="w-12 h-12 mx-auto rounded-full bg-orange-50 border border-orange-200 flex items-center justify-center text-2xl">
+                  🗺️
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-slate-900">
+                    {lang === 'en' ? 'No Driver Selected' : 'ยังไม่ได้เลือกคนขับ'}
+                  </h3>
+                  <p className="text-[10px] font-bold text-slate-500 mt-1">
+                    {lang === 'en'
+                      ? 'Please choose a driver from the Home screen to view their route on the map.'
+                      : 'กรุณาเลือกคนขับจากหน้าหลัก เพื่อดูตำแหน่งและเส้นทางบนแผนที่'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setScreen('explore')}
+                  className="w-full py-2.5 px-3 bg-orange-500 hover:bg-orange-600 text-white font-black text-xs rounded-xl shadow-md transition active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  <span>🏠</span>
+                  <span>{lang === 'en' ? 'Go to Home Screen to Select Driver' : 'ไปที่หน้าหลักเพื่อเลือกคนขับ'}</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Right Detail Pane: Full Interactive Map Canvas */}
-          <div className="flex-1 flex flex-col p-4 bg-slate-50">
+          <div className="flex-1 flex flex-col p-4 bg-slate-50 min-h-[580px] relative">
             {mapCanvasContent}
           </div>
+
+          {/* Tablet Floating Confirmation for Pending Booking */}
+          {pendingBookingRideId && (
+            <div className="fixed bottom-8 right-8 z-50 bg-slate-900/95 text-white p-3.5 rounded-2xl shadow-2xl border-2 border-orange-500 backdrop-blur-md flex items-center justify-between gap-3 animate-bounce-short">
+              <div className="min-w-0 pr-1">
+                <div className="text-[10px] font-black text-orange-400 uppercase tracking-wider flex items-center gap-1">
+                  <span>🗺️</span>
+                  <span>{lang === 'en' ? 'Map Drop-off Mode' : 'โหมดเลือกจุดส่งในแผนที่'}</span>
+                </div>
+                <div className="text-xs font-black truncate mt-0.5 flex items-center gap-1 text-white">
+                  <span>📍</span>
+                  <span className="truncate">{destinationName}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveSeatModalRideId(pendingBookingRideId);
+                    setPendingBookingRideId(null);
+                  }}
+                  className="px-3.5 py-2 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs rounded-xl shadow-lg shadow-orange-500/30 flex items-center gap-1 transition active:scale-95"
+                >
+                  <span>✓</span>
+                  <span>{lang === 'en' ? 'Use This & Book' : 'ใช้จุดส่งนี้ & กลับไปจอง'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPendingBookingRideId(null)}
+                  className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl text-xs font-bold transition"
+                  title="Cancel"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       );
     }
 
-    // MOBILE VIEW (< 768px): Full-Screen Map + Native Bottom Sheet Drawer with Drag Handle
+    // MOBILE VIEW (< 768px): Full-Screen Map + Privacy Compliant Bottom Sheet
     return (
-      <div className="flex-1 flex flex-col relative bg-slate-50 pb-[82px] overflow-hidden">
+      <div className="flex-1 flex flex-col relative bg-slate-50 pb-[88px] overflow-hidden">
         <div className="px-3.5 py-2 bg-white z-10 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <IconPin size={15} className="text-orange-500" />
             <h2 className="text-xs font-black text-slate-900">
-              แผนที่จุดรับ-ส่ง (แตะการ์ดรถหรือหมุดเพื่อโฟกัส)
+              {lang === 'en'
+                ? 'Pickup & Route Map'
+                : 'แผนที่จุดรับ-ส่ง & เส้นทาง'}
             </h2>
           </div>
           <button
             type="button"
-            onClick={() => setIsMapFocused(!isMapFocused)}
-            className="min-h-[36px] text-[10px] font-black bg-slate-100 hover:bg-orange-50 text-slate-700 border border-slate-200 px-2.5 py-1 rounded-xl transition"
+            onClick={() => setRecenterTrigger((prev) => prev + 1)}
+            className="min-h-[34px] px-2.5 py-1 text-[11px] font-black bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 rounded-xl shadow-sm transition active:scale-95 flex items-center gap-1 shrink-0"
+            title={lang === 'en' ? 'Center Map' : 'จัดกึ่งกลางแผนที่'}
           >
-            {isMapFocused ? 'ดูมุมกว้าง' : 'ซูมหมุดที่เลือก'}
+            <span>🎯</span>
+            <span>{lang === 'en' ? 'Center' : 'จัดกึ่งกลาง'}</span>
           </button>
         </div>
 
         {/* Interactive Pan & Focus Map Viewport */}
-        <div className="flex-1 flex flex-col mx-3 mt-2 mb-1.5">
+        <div className="flex-1 flex flex-col mx-3 mt-2 mb-1.5 min-h-[200px]">
           {mapCanvasContent}
         </div>
 
-        {/* Native Mobile Bottom Sheet Drawer with Drag Handle */}
-        <div className="bg-white rounded-t-[28px] border-t border-slate-200 px-3 pt-2 pb-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] space-y-2 z-20">
-          <div className="w-10 h-1.5 rounded-full bg-slate-300 mx-auto" />
-
-          {focusedVehicleCard}
-
-          {/* Bottom Vehicle Selector Cards: Clicking Focuses Map Pin & Shows Vehicle Details */}
-          <div>
-            <div className="text-[9px] font-black text-slate-500 mb-1 flex items-center justify-between px-0.5">
-              <span>แตะเลือกรถด้านล่างเพื่อโฟกัสตำแหน่งบนแผนที่:</span>
-              <span className="text-orange-600">
-                กำลังเลือก: {mapRide.hostName}
-              </span>
+        {/* Floating Banner when picking dropoff on Mobile */}
+        {pendingBookingRideId && (
+          <div className="mx-3 mb-2 bg-slate-900/95 text-white p-3 rounded-2xl shadow-xl border-2 border-orange-500 backdrop-blur-md flex items-center justify-between gap-2.5 z-30">
+            <div className="min-w-0 pr-1">
+              <div className="text-[9.5px] font-black text-orange-400 uppercase tracking-wider flex items-center gap-1">
+                <span>🗺️</span>
+                <span>{lang === 'en' ? 'Map Drop-off Mode' : 'โหมดเลือกจุดส่งในแผนที่'}</span>
+              </div>
+              <div className="text-xs font-black truncate mt-0.5 flex items-center gap-1 text-white">
+                <span>📍</span>
+                <span className="truncate">{destinationName}</span>
+              </div>
             </div>
-            <div className="grid grid-cols-3 gap-1.5">
-              {mapPinRides.slice(0, 3).map((item) => {
-                const isSelected = mapRide.id === item.id;
-                const itemNet =
-                  item.baseFare + (isPremium ? 0 : item.commissionFee);
-                const meta = getPinCoords(item.id);
-
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => handleSelectMapVehicle(item.id)}
-                    className={`min-h-[56px] p-2 rounded-xl border-2 text-left transition tabular-nums ${
-                      isSelected
-                        ? 'bg-orange-50 border-orange-500 shadow-sm scale-[1.01]'
-                        : 'bg-white border-slate-200 hover:border-orange-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span
-                        className={`text-[10px] font-black truncate ${
-                          isSelected ? 'text-orange-600' : 'text-slate-900'
-                        }`}
-                      >
-                        {item.hostName}
-                      </span>
-                      <IconCar
-                        size={13}
-                        className={
-                          isSelected ? 'text-orange-500 shrink-0' : 'text-slate-400 shrink-0'
-                        }
-                      />
-                    </div>
-                    <div className="text-[9px] font-bold text-slate-500 truncate">
-                      {meta.shortType}
-                    </div>
-                    <div className="flex items-center justify-between text-[9px] font-black mt-1 pt-1 border-t border-slate-100">
-                      <span className="text-teal-700">
-                        {item.dropOffMeters === 0
-                          ? '0m'
-                          : `${item.dropOffMeters}m`}
-                      </span>
-                      <span className="text-orange-600 font-mono">฿{itemNet}</span>
-                    </div>
-                  </button>
-                );
-              })}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSeatModalRideId(pendingBookingRideId);
+                  setPendingBookingRideId(null);
+                }}
+                className="px-3 py-1.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs rounded-xl shadow-md flex items-center gap-1 transition active:scale-95"
+              >
+                <span>✓</span>
+                <span>{lang === 'en' ? 'Use & Book' : 'ใช้จุดส่งนี้ & กลับไปจอง'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPendingBookingRideId(null)}
+                className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-lg text-xs font-bold"
+              >
+                ✕
+              </button>
             </div>
           </div>
+        )}
+
+        {/* Native Mobile Bottom Sheet Drawer with Drag Handle */}
+        <div className="shrink-0 bg-white rounded-t-[28px] border-t border-slate-200 px-3.5 pt-2 pb-4 shadow-[0_-8px_24px_rgba(15,23,42,0.12)] space-y-2 z-20">
+          <div
+            onClick={() => setIsMobileDrawerExpanded(!isMobileDrawerExpanded)}
+            className="w-full flex flex-col items-center py-1 cursor-pointer select-none active:opacity-70"
+            title={isMobileDrawerExpanded ? 'ย่อแถบ' : 'ขยายแถบ'}
+          >
+            <div className="w-12 h-1.5 rounded-full bg-slate-300 hover:bg-slate-400 transition mb-0.5" />
+            <div className="text-[9px] font-bold text-slate-400">
+              {isMobileDrawerExpanded
+                ? (lang === 'en' ? '▼ Tap to slide down' : '▼ แตะเพื่อเลื่อนลง')
+                : (lang === 'en' ? '▲ Tap to slide up' : '▲ แตะเพื่อเลื่อนขึ้น')}
+            </div>
+          </div>
+
+          {isMobileDrawerExpanded ? (
+            isBooked ? (
+              focusedVehicleCard
+            ) : mapRide ? (
+              <div className="space-y-2">
+                {focusedVehicleCard}
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl p-3 border border-slate-200 text-center space-y-2.5">
+                <div className="w-10 h-10 mx-auto rounded-full bg-orange-50 border border-orange-200 flex items-center justify-center text-lg">
+                  🗺️
+                </div>
+                <div>
+                  <div className="text-xs font-black text-slate-800">
+                    {lang === 'en' ? 'No Driver Selected' : 'ยังไม่ได้เลือกคนขับ'}
+                  </div>
+                  <p className="text-[10.5px] font-bold text-slate-500 mt-0.5">
+                    {lang === 'en'
+                      ? 'Please choose a driver from the Home screen'
+                      : 'กรุณาเลือกคนขับจากหน้าหลัก เพื่อดูเส้นทางบนแผนที่'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setScreen('explore')}
+                  className="w-full py-2.5 px-3 bg-orange-500 hover:bg-orange-600 text-white font-black text-xs rounded-xl shadow-md transition active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  <span>🏠</span>
+                  <span>{lang === 'en' ? 'Go to Home Screen' : 'ไปที่หน้าหลักเพื่อเลือกคนขับ'}</span>
+                </button>
+              </div>
+            )
+          ) : (
+            <div
+              onClick={() => {
+                if (mapRide || isBooked) {
+                  setIsMobileDrawerExpanded(true);
+                } else {
+                  setScreen('explore');
+                }
+              }}
+              className="flex items-center justify-between gap-2 p-2 bg-slate-50 hover:bg-orange-50/50 border border-slate-200 rounded-2xl cursor-pointer transition active:scale-98"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center shrink-0 text-xs">
+                  {mapRide ? '🚗' : '🗺️'}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-black text-slate-900 truncate">
+                    {mapRide ? `${mapRide.hostName} (${mapRide.vehicleLabel})` : (lang === 'en' ? 'No driver selected' : 'ยังไม่ได้เลือกคนขับ')}
+                  </div>
+                  <div className="text-[10px] font-bold text-slate-500 truncate">
+                    {isBooked
+                      ? (lang === 'en' ? 'Ongoing Trip' : 'ทริปที่กำลังเดินทาง')
+                      : mapRide
+                      ? (lang === 'en' ? `฿${netPerSeat} • ${mapRide.seatsLeft} seat(s) left` : `฿${netPerSeat} • ว่าง ${mapRide.seatsLeft} ที่นั่ง`)
+                      : (lang === 'en' ? 'Tap to choose from Home screen' : 'แตะเพื่อไปเลือกคนขับที่หน้าหลัก')}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (mapRide) {
+                    handleOpenSeatModal(mapRide, isBooked ? 'active-status' : 'select-seat');
+                  } else {
+                    setScreen('explore');
+                  }
+                }}
+                className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white font-black text-[11px] rounded-xl shadow-sm shrink-0 transition active:scale-95"
+              >
+                {isBooked ? (lang === 'en' ? 'Status' : 'สถานะ') : mapRide ? (lang === 'en' ? 'Book' : 'จอง') : (lang === 'en' ? 'Choose' : 'เลือก')}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -1346,7 +2214,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() =>
-                  handleOpenSeatModal(activeBookedRideObj, 'trip-review')
+                  handleOpenSeatModal(activeBookedRideObj, 'confirm-finish')
                 }
                 className="min-h-[44px] py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-black text-[11px] shadow-sm flex items-center justify-center gap-1 transition"
               >
@@ -1427,7 +2295,7 @@ export default function App() {
               theme === 'dark' ? 'text-slate-300 px-1' : 'text-slate-500 px-1'
             }
           >
-            โหมดแสดงผล:
+            {lang === 'en' ? 'Preview Mode:' : 'โหมดแสดงผล:'}
           </span>
           <button
             type="button"
@@ -1440,7 +2308,9 @@ export default function App() {
                   : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            อัตโนมัติตามจอ ({viewportWidth >= 768 ? 'แท็บเล็ต/iPad' : 'มือถือ'})
+            {lang === 'en'
+              ? `Auto Responsive (${viewportWidth >= 768 ? 'Tablet/iPad' : 'Mobile'})`
+              : `อัตโนมัติตามจอ (${viewportWidth >= 768 ? 'แท็บเล็ต/iPad' : 'มือถือ'})`}
           </button>
           <button
             type="button"
@@ -1453,7 +2323,7 @@ export default function App() {
                   : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            สมาร์ทโฟน (iOS / Android)
+            {lang === 'en' ? 'Smartphone (iOS / Android)' : 'สมาร์ทโฟน (iOS / Android)'}
           </button>
           <button
             type="button"
@@ -1466,7 +2336,7 @@ export default function App() {
                   : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            แท็บเล็ต / iPad (Split-View)
+            {lang === 'en' ? 'Tablet / iPad (Split-View)' : 'แท็บเล็ต / iPad (Split-View)'}
           </button>
         </div>
       )}
@@ -1475,43 +2345,14 @@ export default function App() {
       <div
         className={`w-full ${
           isTablet
-            ? 'max-w-[1160px] h-[100dvh] md:h-[820px] md:rounded-[36px] md:border-[8px] md:border-slate-800'
-            : 'sm:max-w-[396px] h-[100dvh] sm:h-[844px] sm:rounded-[44px] sm:border-[8px] sm:border-slate-800'
+            ? 'max-w-[1160px] h-[100dvh] md:h-[min(820px,calc(100dvh-3.5rem))] md:rounded-[36px] md:border-[8px] md:border-slate-800'
+            : 'sm:max-w-[396px] h-[100dvh] sm:h-[min(844px,calc(100dvh-3.5rem))] sm:rounded-[44px] sm:border-[8px] sm:border-slate-800'
         } shadow-2xl overflow-hidden flex flex-col relative transition-all duration-300 ${
           theme === 'dark'
             ? 'theme-dark bg-slate-900 text-slate-100'
             : 'bg-white text-slate-900'
         }`}
       >
-        {/* Native iOS / Android Top Safe Area & Status Bar */}
-        <div className="safe-top px-5 pt-1.5 pb-1 text-[10px] flex justify-between items-center font-black z-30 bg-white text-slate-900 shrink-0 tabular-nums border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <span>09:41</span>
-            {isTablet && (
-              <span className="text-[9px] font-bold text-slate-400">
-                iPadOS • CAMPUSHOP
-              </span>
-            )}
-          </div>
-
-          {/* Native Dynamic Island Pill on Mobile Shell */}
-          {!isTablet && (
-            <div
-              aria-hidden="true"
-              className="w-20 h-3.5 rounded-full bg-slate-950 flex items-center justify-end px-2"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            </div>
-          )}
-
-          <div className="flex gap-1.5 items-center">
-            <span className="bg-slate-900 text-white px-1.5 py-[1px] rounded text-[8px]">
-              5G
-            </span>
-            <span className="text-[9px] font-mono">100%</span>
-          </div>
-        </div>
-
         {/* Main Adaptive Workspace: Left Navigation Rail on Tablet/iPad + Right Content Area */}
         <div className="flex-1 flex flex-row overflow-hidden relative">
           {/* TABLET / iPAD LEFT NAVIGATION RAIL (iPadOS Sidebar / Material 3 Navigation Rail) */}
@@ -1524,10 +2365,7 @@ export default function App() {
                 {/* Brand Logo Header in Sidebar (Original Rabbit Logo & Clean Brand Name) */}
                 <button
                   type="button"
-                  onClick={() =>
-                    setScreen(screen === 'explore' ? 'splash' : 'explore')
-                  }
-                  title="หน้าหลัก / ดูหน้าโลโก้แอพ"
+                  onClick={() => setScreen('explore')}
                   className="w-full flex items-center gap-2.5 text-left p-2 rounded-2xl hover:bg-orange-50/60 transition"
                 >
                   <div className="w-10 h-10 rounded-2xl bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0">
@@ -1564,7 +2402,7 @@ export default function App() {
                     }`}
                   >
                     <IconPin size={18} />
-                    <span>หน้าหลัก (ค้นหาทริป)</span>
+                    <span>{lang === 'en' ? 'Explore (Find Rides)' : 'หน้าหลัก (ค้นหาทริป)'}</span>
                   </button>
 
                   <button
@@ -1577,7 +2415,7 @@ export default function App() {
                     }`}
                   >
                     <IconCar size={18} />
-                    <span>แผนที่จุดรับ-ส่ง</span>
+                    <span>{lang === 'en' ? 'Pickup & Drop-off Map' : 'แผนที่จุดรับ-ส่ง'}</span>
                   </button>
 
                   <button
@@ -1590,7 +2428,7 @@ export default function App() {
                     }`}
                   >
                     <IconSparkle size={18} />
-                    <span>AI จองให้ & เพื่อน</span>
+                    <span>{lang === 'en' ? 'AI Concierge & Chat' : 'AI จองให้ & เพื่อน'}</span>
                   </button>
 
                   <button
@@ -1603,7 +2441,7 @@ export default function App() {
                     }`}
                   >
                     <IconTicket size={18} />
-                    <span>ชำระเงิน & คูปอง</span>
+                    <span>{lang === 'en' ? 'Payment & Coupons' : 'ชำระเงิน & คูปอง'}</span>
                   </button>
 
                   <button
@@ -1617,7 +2455,7 @@ export default function App() {
                   >
                     <span className="flex items-center gap-3">
                       <IconHistory size={18} />
-                      <span>ประวัติการเดินทาง</span>
+                      <span>{lang === 'en' ? 'Trip History' : 'ประวัติการเดินทาง'}</span>
                     </span>
                     {activeBooking && (
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
@@ -1639,7 +2477,7 @@ export default function App() {
                         screen === 'profile' ? 'text-orange-500' : 'text-slate-400'
                       }
                     />
-                    <span>โปรไฟล์ของฉัน</span>
+                    <span>{lang === 'en' ? 'My Profile' : 'โปรไฟล์ของฉัน'}</span>
                   </button>
                 </nav>
               </div>
@@ -1674,10 +2512,7 @@ export default function App() {
               <header className="px-3.5 py-2 bg-white border-b border-slate-200 flex items-center justify-between gap-2 z-30 shrink-0 overflow-hidden">
                 <button
                   type="button"
-                  onClick={() =>
-                    setScreen(screen === 'explore' ? 'splash' : 'explore')
-                  }
-                  title="หน้าหลัก / ดูหน้าโลโก้แอพ"
+                  onClick={() => setScreen('explore')}
                   className="min-h-[44px] flex items-center gap-2 text-left min-w-0 shrink-0"
                 >
                   <div className="w-8 h-8 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0">
@@ -1808,6 +2643,9 @@ export default function App() {
                 isPremium={isPremium}
                 isTablet={isTablet}
                 activeBooking={activeBooking}
+                destinationName={destinationName}
+                destinationPos={destinationPos}
+                onDestinationChange={handleDestinationChange}
                 onOpenSeatModal={handleOpenSeatModal}
                 onOpenDriverChat={handleOpenDriverChat}
                 onOpenAiTab={() => {
@@ -1815,6 +2653,12 @@ export default function App() {
                   setScreen('ai');
                 }}
                 onOpenCreateTab={() => setScreen('create')}
+                onOpenMapTab={() => setScreen('map')}
+                onSelectRideForMap={(rideId) => {
+                  handleSelectMapVehicle(rideId);
+                  setScreen('map');
+                }}
+                lang={lang}
               />
             )}
             {screen === 'ai' && (
@@ -1853,9 +2697,12 @@ export default function App() {
             {screen === 'profile' && (
               <ProfileScreen
                 profile={userProfile}
-                onChangeProfile={setUserProfile}
+                onChangeProfile={handleUpdateUserProfile}
                 isPremium={isPremium}
                 isTablet={isTablet}
+                enableTwoFactor={enableTwoFactor}
+                onToggleTwoFactor={handleToggleTwoFactor}
+                lang={lang}
                 onOpenPremiumModal={() => {
                   setConfirmPremiumStep(false);
                   setShowPremiumModal(true);
@@ -1898,6 +2745,28 @@ export default function App() {
             onClose={() => {
               setActiveSeatModalRideId(null);
               setActiveModalInitialStep(undefined);
+            }}
+            lang={lang}
+            currentDestination={destinationName}
+            onDestinationChange={(name, pos) => {
+              if (pos) {
+                handleDestinationChange(name, pos);
+              } else {
+                setDestinationName(name);
+                setDestinationPos(getLandmarkCoords(name));
+              }
+            }}
+            onPickOnMap={() => {
+              if (activeModalRide) {
+                setPendingBookingRideId(activeModalRide.id);
+                setActiveSeatModalRideId(null);
+                setScreen('map');
+                showToast(
+                  lang === 'en'
+                    ? '🗺️ Tap map, drag pin, or search to pick drop-off, then tap [Use & Book]'
+                    : '🗺️ จิ้มแผนที่ ลากหมุด หรือค้นหาเพื่อเลือกจุดส่ง แล้วกด [ใช้จุดส่งนี้ & กลับไปจอง]'
+                );
+              }
             }}
           />
         )}
@@ -2061,7 +2930,9 @@ export default function App() {
                 }`}
               >
                 <IconPin size={20} />
-                <span className="text-[10px] font-black mt-0.5">หน้าหลัก</span>
+                <span className="text-[10px] font-black mt-0.5">
+                  {lang === 'en' ? 'Explore' : 'หน้าหลัก'}
+                </span>
               </button>
 
               <button
@@ -2074,7 +2945,9 @@ export default function App() {
                 }`}
               >
                 <IconCar size={20} />
-                <span className="text-[10px] font-black mt-0.5">แผนที่</span>
+                <span className="text-[10px] font-black mt-0.5">
+                  {lang === 'en' ? 'Map' : 'แผนที่'}
+                </span>
               </button>
 
               <div className="relative -top-5 flex flex-col items-center justify-center w-16">
@@ -2091,7 +2964,7 @@ export default function App() {
                   <IconPlus size={24} />
                 </button>
                 <span className="text-[10px] font-black text-slate-700 mt-0.5">
-                  เปิดตี้
+                  {lang === 'en' ? 'Create' : 'เปิดตี้'}
                 </span>
               </div>
 
@@ -2105,7 +2978,9 @@ export default function App() {
                 }`}
               >
                 <IconSparkle size={20} />
-                <span className="text-[10px] font-black mt-0.5">AI จองให้</span>
+                <span className="text-[10px] font-black mt-0.5">
+                  {lang === 'en' ? 'AI Auto' : 'AI จองให้'}
+                </span>
               </button>
 
               <button
@@ -2123,7 +2998,9 @@ export default function App() {
                     screen === 'profile' ? 'text-orange-500' : 'text-slate-400'
                   }
                 />
-                <span className="text-[10px] font-black mt-0.5">โปรไฟล์</span>
+                <span className="text-[10px] font-black mt-0.5">
+                  {lang === 'en' ? 'Profile' : 'โปรไฟล์'}
+                </span>
               </button>
             </div>
 
@@ -2142,6 +3019,274 @@ export default function App() {
             className="safe-bottom py-1.5 bg-white border-t border-slate-100 flex justify-center shrink-0"
           >
             <div className="w-36 h-1 rounded-full bg-slate-900/20" />
+          </div>
+        )}
+
+        {/* Profile Setup / Edit Modal for New User Registration (Linked with MySQL) */}
+        {showProfileSetupModal && (
+          <div
+            className="absolute inset-0 bg-slate-950/80 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto"
+            onClick={() => setShowProfileSetupModal(false)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white text-slate-900 w-full max-w-[460px] rounded-3xl p-5 shadow-2xl border-2 border-orange-500 space-y-3.5 my-auto animate-[sheet-rise_0.22s_cubic-bezier(0.22,1,0.36,1)] max-h-[92vh] overflow-y-auto custom-scroll"
+            >
+              <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center text-xl shrink-0">
+                    🐰
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900">
+                      {lang === 'en' ? 'Set Up Your Profile' : '🐰 ตั้งค่าโปรไฟล์ผู้ใช้ใหม่'}
+                    </h3>
+                    <p className="text-[10.5px] text-slate-500 font-bold">
+                      {lang === 'en'
+                        ? 'Saved securely to SQL database'
+                        : 'บันทึกข้อมูลเข้าสู่ฐานข้อมูล SQL ระบบ CAMPUSHOP'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowProfileSetupModal(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 font-black text-xs flex items-center justify-center"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="block text-[11px] font-black text-slate-700 mb-1">
+                    {lang === 'en' ? 'Email (Linked)' : 'อีเมลที่สมัคร (เชื่อมโยงในระบบ)'}
+                  </label>
+                  <input
+                    type="text"
+                    disabled
+                    value={setupProfile.email}
+                    className="w-full min-h-[42px] px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 font-bold text-xs cursor-not-allowed"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-700 mb-1">
+                      {lang === 'en' ? 'Full Name / Nickname *' : 'ชื่อ-นามสกุล / ชื่อเล่น *'}
+                    </label>
+                    <input
+                      type="text"
+                      value={setupProfile.name}
+                      onChange={(e) => {
+                        const clean = e.target.value.replace(/[^a-zA-Z\u0E00-\u0E7F\s]/g, '');
+                        setSetupProfile({ ...setupProfile, name: clean });
+                        if (modalFieldErrors.name && clean.trim().length > 0) {
+                          setModalFieldErrors((prev) => {
+                            const next = { ...prev };
+                            delete next.name;
+                            return next;
+                          });
+                        }
+                      }}
+                      placeholder={lang === 'en' ? 'Letters only (e.g. Zack)' : 'ตัวอักษรเท่านั้น เช่น นาย บี (ต้น)'}
+                      className={`w-full min-h-[42px] px-3 py-2 bg-white border rounded-xl text-slate-900 font-bold text-xs focus:outline-none transition ${
+                        modalFieldErrors.name
+                          ? 'border-rose-500 bg-rose-50/25'
+                          : 'border-slate-300 focus:border-orange-500'
+                      }`}
+                    />
+                    {modalFieldErrors.name && (
+                      <p className="mt-1 text-[10px] font-bold text-rose-600 flex items-center gap-1">
+                        <span>❌</span>
+                        <span>{modalFieldErrors.name}</span>
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-black text-slate-700">
+                        {lang === 'en' ? 'Student ID *' : 'รหัสนักศึกษา *'}
+                      </label>
+                      <span className={`text-[10px] font-mono font-bold ${
+                        setupProfile.studentId.length === 10 ? 'text-emerald-600' : 'text-slate-400'
+                      }`}>
+                        {setupProfile.studentId.length}/10
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      value={setupProfile.studentId}
+                      onChange={(e) => {
+                        const clean = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setSetupProfile({ ...setupProfile, studentId: clean });
+                        if (modalFieldErrors.studentId && clean.length === 10) {
+                          setModalFieldErrors((prev) => {
+                            const next = { ...prev };
+                            delete next.studentId;
+                            return next;
+                          });
+                        }
+                      }}
+                      inputMode="numeric"
+                      maxLength={10}
+                      placeholder="6622040001 (10 หลัก)"
+                      className={`w-full min-h-[42px] px-3 py-2 bg-white border rounded-xl text-slate-900 font-bold text-xs focus:outline-none font-mono transition ${
+                        modalFieldErrors.studentId
+                          ? 'border-rose-500 bg-rose-50/25'
+                          : 'border-slate-300 focus:border-orange-500'
+                      }`}
+                    />
+                    {modalFieldErrors.studentId && (
+                      <p className="mt-1 text-[10px] font-bold text-rose-600 flex items-center gap-1">
+                        <span>❌</span>
+                        <span>{modalFieldErrors.studentId}</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-700 mb-1">
+                      {lang === 'en' ? 'Gender' : 'เพศ'}
+                    </label>
+                    <select
+                      value={setupProfile.gender}
+                      onChange={(e) => setSetupProfile({ ...setupProfile, gender: e.target.value as 'male' | 'female' | 'other' })}
+                      className="w-full min-h-[42px] px-3 py-2 bg-white border border-slate-300 focus:border-orange-500 rounded-xl text-slate-900 font-bold text-xs focus:outline-none"
+                    >
+                      <option value="male">{lang === 'en' ? 'Male' : 'ชาย'}</option>
+                      <option value="female">{lang === 'en' ? 'Female' : 'หญิง'}</option>
+                      <option value="other">{lang === 'en' ? 'Other' : 'อื่นๆ'}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-700 mb-1">
+                      {lang === 'en' ? 'Role' : 'บทบาทการใช้งาน'}
+                    </label>
+                    <select
+                      value={setupProfile.role}
+                      onChange={(e) => setSetupProfile({ ...setupProfile, role: e.target.value as UserRoleType })}
+                      className="w-full min-h-[42px] px-3 py-2 bg-white border border-slate-300 focus:border-orange-500 rounded-xl text-slate-900 font-bold text-xs focus:outline-none"
+                    >
+                      <option value="both">{lang === 'en' ? 'Both (Driver & Passenger)' : 'ทั้งสองแบบ (คนขับ & ผู้โดยสาร)'}</option>
+                      <option value="passenger">{lang === 'en' ? 'Passenger Only' : 'หาคนหารค่ารถ (ผู้โดยสาร)'}</option>
+                      <option value="driver">{lang === 'en' ? 'Driver Only' : 'มีรถส่วนตัว (คนขับ)'}</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-700 mb-1">
+                      {lang === 'en' ? 'Faculty & Year *' : 'คณะและชั้นปี *'}
+                    </label>
+                    <input
+                      type="text"
+                      value={setupProfile.faculty}
+                      onChange={(e) => {
+                        const clean = e.target.value.replace(/[^a-zA-Z0-9\u0E00-\u0E7F\s.•\-\/]/g, '');
+                        setSetupProfile({ ...setupProfile, faculty: clean });
+                        if (modalFieldErrors.faculty && clean.trim().length > 0) {
+                          setModalFieldErrors((prev) => {
+                            const next = { ...prev };
+                            delete next.faculty;
+                            return next;
+                          });
+                        }
+                      }}
+                      placeholder={lang === 'en' ? 'e.g. SIIT • CPE Year 2' : 'เช่น SIIT • CPE ปี 2'}
+                      className={`w-full min-h-[42px] px-3 py-2 bg-white border rounded-xl text-slate-900 font-bold text-xs focus:outline-none transition ${
+                        modalFieldErrors.faculty
+                          ? 'border-rose-500 bg-rose-50/25'
+                          : 'border-slate-300 focus:border-orange-500'
+                      }`}
+                    />
+                    {modalFieldErrors.faculty && (
+                      <p className="mt-1 text-[10px] font-bold text-rose-600 flex items-center gap-1">
+                        <span>❌</span>
+                        <span>{modalFieldErrors.faculty}</span>
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-700 mb-1">
+                      {lang === 'en' ? 'University' : 'มหาวิทยาลัย'}
+                    </label>
+                    <input
+                      type="text"
+                      value={setupProfile.university}
+                      onChange={(e) => setSetupProfile({ ...setupProfile, university: e.target.value })}
+                      placeholder={lang === 'en' ? 'e.g. Thammasat (SIIT)' : 'เช่น ม.ธรรมศาสตร์ (SIIT)'}
+                      className="w-full min-h-[42px] px-3 py-2 bg-white border border-slate-300 focus:border-orange-500 rounded-xl text-slate-900 font-bold text-xs focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-black text-slate-700 mb-1">
+                    {lang === 'en' ? 'Bio (Intro)' : 'Bio แนะนำตัวสั้นๆ'}
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={setupProfile.bio}
+                    onChange={(e) => setSetupProfile({ ...setupProfile, bio: e.target.value })}
+                    placeholder={lang === 'en' ? 'Tell co-passengers about your travel vibe...' : 'บอกเพื่อนร่วมทางเกี่ยวกับ vibe หรือเส้นทางเดินทางของคุณ...'}
+                    className="w-full px-3 py-2 bg-white border border-slate-300 focus:border-orange-500 rounded-xl text-slate-900 font-bold text-xs focus:outline-none resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-700 mb-1">
+                      Instagram
+                    </label>
+                    <input
+                      type="text"
+                      value={setupProfile.ig}
+                      onChange={(e) => setSetupProfile({ ...setupProfile, ig: e.target.value.replace(/[^a-zA-Z0-9._@]/g, '') })}
+                      placeholder="@your.instagram"
+                      className="w-full min-h-[42px] px-3 py-2 bg-white border border-slate-300 focus:border-orange-500 rounded-xl text-slate-900 font-bold text-xs focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-black text-slate-700 mb-1">
+                      Facebook
+                    </label>
+                    <input
+                      type="text"
+                      value={setupProfile.facebook}
+                      onChange={(e) => setSetupProfile({ ...setupProfile, facebook: e.target.value.replace(/[^a-zA-Z0-9._\-\/]/g, '') })}
+                      placeholder="fb.com/yourname"
+                      className="w-full min-h-[42px] px-3 py-2 bg-white border border-slate-300 focus:border-orange-500 rounded-xl text-slate-900 font-bold text-xs focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-3 grid grid-cols-2 gap-3 w-full">
+                <button
+                  type="button"
+                  onClick={() => setShowProfileSetupModal(false)}
+                  className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black rounded-xl text-xs transition active:scale-95 text-center"
+                >
+                  {lang === 'en' ? 'Cancel' : 'ยกเลิก'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRegisterSubmit}
+                  disabled={authLoading}
+                  className="w-full py-3 bg-orange-500 hover:bg-orange-600 active:scale-98 text-white font-black rounded-xl text-xs shadow-md transition flex items-center justify-center gap-1.5 text-center px-2"
+                >
+                  {authLoading ? (
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <span className="truncate">{lang === 'en' ? 'Save Profile →' : 'บันทึกโปรไฟล์ & เริ่มใช้งาน →'}</span>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

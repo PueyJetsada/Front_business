@@ -24,10 +24,13 @@ interface ProfileScreenProps {
   onChangeProfile: (updated: UserProfile) => void;
   isPremium: boolean;
   isTablet?: boolean;
+  enableTwoFactor?: boolean;
+  onToggleTwoFactor?: (enabled: boolean) => void;
   onOpenPremiumModal: () => void;
   onOpenPaymentScreen: () => void;
   onOpenHistoryScreen: () => void;
   onLogoutToLogin: () => void;
+  lang?: 'th' | 'en';
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
@@ -35,10 +38,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onChangeProfile,
   isPremium,
   isTablet = false,
+  enableTwoFactor = true,
+  onToggleTwoFactor,
   onOpenPremiumModal,
   onOpenPaymentScreen,
   onOpenHistoryScreen,
   onLogoutToLogin,
+  lang = 'th',
 }) => {
   const [savedToast, setSavedToast] = useState(false);
 
@@ -94,34 +100,40 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 <input
                   type="text"
                   value={profile.name}
-                  onChange={(e) =>
-                    onChangeProfile({ ...profile, name: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const cleanName = e.target.value.replace(/[^a-zA-Z\u0E00-\u0E7F\s]/g, '');
+                    onChangeProfile({ ...profile, name: cleanName });
+                  }}
+                  placeholder="ชื่อ-นามสกุล / ชื่อเล่น (ตัวอักษรเท่านั้น)"
                   aria-label="ชื่อเล่น"
                   className="w-full min-h-[38px] border-b border-slate-300 bg-transparent py-1 text-sm font-black focus:border-orange-500 text-slate-900"
                 />
               </div>
               <div className="grid grid-cols-2 gap-1.5">
-                <input
-                  type="text"
-                  value={profile.faculty}
-                  onChange={(e) =>
-                    onChangeProfile({ ...profile, faculty: e.target.value })
-                  }
-                  placeholder="คณะและชั้นปี"
-                  aria-label="คณะและชั้นปี"
-                  className="w-full min-h-[38px] border-b border-slate-300 bg-transparent py-1 text-[11px] font-bold text-slate-700 focus:border-orange-500 focus:outline-none"
-                />
-                <input
-                  type="text"
-                  value={profile.university}
-                  onChange={(e) =>
-                    onChangeProfile({ ...profile, university: e.target.value })
-                  }
-                  placeholder="มหาวิทยาลัย"
-                  aria-label="มหาวิทยาลัย"
-                  className="w-full min-h-[38px] border-b border-slate-300 bg-transparent py-1 text-[11px] font-bold text-slate-700 focus:border-orange-500 focus:outline-none"
-                />
+                <div>
+                  <input
+                    type="text"
+                    value={profile.faculty}
+                    onChange={(e) =>
+                      onChangeProfile({ ...profile, faculty: e.target.value })
+                    }
+                    placeholder="คณะและชั้นปี (เช่น SIIT • CPE ปี 3)"
+                    aria-label="คณะและชั้นปี"
+                    className="w-full min-h-[38px] border-b border-slate-300 bg-transparent py-1 text-[11px] font-bold focus:border-orange-500 text-slate-800 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    value={profile.university}
+                    onChange={(e) =>
+                      onChangeProfile({ ...profile, university: e.target.value })
+                    }
+                    placeholder="มหาวิทยาลัย (เช่น ม.ธรรมศาสตร์ (SIIT))"
+                    aria-label="มหาวิทยาลัย"
+                    className="w-full min-h-[38px] border-b border-slate-300 bg-transparent py-1 text-[11px] font-bold focus:border-orange-500 text-slate-800 focus:outline-none"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -231,9 +243,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <input
                     type="text"
                     value={profile.ig}
-                    onChange={(e) =>
-                      onChangeProfile({ ...profile, ig: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const cleanIg = e.target.value.replace(/[^a-zA-Z0-9._@]/g, '');
+                      onChangeProfile({ ...profile, ig: cleanIg });
+                    }}
                     placeholder="Instagram (เช่น @name)"
                     className="w-full bg-transparent text-[11px] font-bold text-slate-800 focus:outline-none"
                   />
@@ -243,9 +256,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <input
                     type="text"
                     value={profile.facebook}
-                    onChange={(e) =>
-                      onChangeProfile({ ...profile, facebook: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const cleanFb = e.target.value.replace(/[^a-zA-Z0-9._\-\/]/g, '');
+                      onChangeProfile({ ...profile, facebook: cleanFb });
+                    }}
                     placeholder="Facebook (ไม่บังคับ)"
                     className="w-full bg-transparent text-[11px] font-bold text-slate-800 focus:outline-none"
                   />
@@ -266,12 +280,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </span>
               </div>
 
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-2 gap-1.5">
                 {(
                   [
-                    { key: 'sedan', label: 'รถเก๋ง / Sedan (2-3)' },
-                    { key: 'suv', label: 'รถ SUV (2-3-2)' },
-                    { key: 'mpv', label: 'รถ MPV เบาะแยก (2-2-3)' },
+                    { key: 'sedan', label: 'รถเก๋ง / Sedan (4 ที่นั่ง)' },
+                    { key: 'suv', label: 'รถ SUV / MPV (6 ที่นั่ง)' },
                   ] as { key: VehicleSeatType; label: string }[]
                 ).map((vt) => {
                   const active = (profile.carType || 'sedan') === vt.key;
@@ -282,7 +295,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       onClick={() =>
                         onChangeProfile({ ...profile, carType: vt.key })
                       }
-                      className={`min-h-[38px] px-2 py-1.5 rounded-xl text-[10px] font-black border transition ${
+                      className={`min-h-[38px] px-2.5 py-1.5 rounded-xl text-[10px] font-black border transition ${
                         active
                           ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
                           : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-orange-300'
@@ -432,6 +445,33 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               />
               <span>จับคู่เฉพาะเพื่อนร่วมทางเพศเดียวกันเป็นค่าเริ่มต้น</span>
             </label>
+
+            <div className="min-h-[40px] flex items-center justify-between gap-2 text-xs font-bold text-slate-800 pt-2 border-t border-rose-200">
+              <span className="flex items-center gap-1.5">
+                <span>🔐</span>
+                <span>
+                  {lang === 'en'
+                    ? '2-Step Verification (Email OTP)'
+                    : 'การยืนยันตัวตน 2 ขั้นตอน (OTP ทางอีเมล)'}
+                </span>
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={enableTwoFactor}
+                onClick={() => onToggleTwoFactor?.(!enableTwoFactor)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  enableTwoFactor ? 'bg-orange-500' : 'bg-slate-300'
+                }`}
+                title={enableTwoFactor ? 'Turn OFF 2-Step Verification' : 'Turn ON 2-Step Verification'}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    enableTwoFactor ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
           </div>
 
           {/* HOP Premium (฿49/month) Membership Card */}

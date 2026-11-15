@@ -588,43 +588,50 @@ export const CampusHopLogoSvg: React.FC<{
   size?: number;
   className?: string;
 }> = ({ size = 36, className = '' }) => (
+  <PassengerBunnySvg size={size} className={className || 'text-orange-500'} />
+);
+
+export const IconEye: React.FC<{ size?: number; className?: string }> = ({
+  size = 18,
+  className = '',
+}) => (
   <svg
     width={size}
     height={size}
-    viewBox="0 0 64 64"
+    viewBox="0 0 24 24"
     fill="none"
-    xmlns="http://www.w3.org/2000/svg"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
     className={className}
-    aria-label="CAMPUSHOP Rabbit Logo"
+    aria-hidden="true"
   >
-    <rect
-      x="2"
-      y="2"
-      width="60"
-      height="60"
-      rx="18"
-      fill="#fff7ed"
-      stroke="#fed7aa"
-      strokeWidth="4"
-    />
-    <g
-      transform="translate(10, 10) scale(1.8333)"
-      stroke="#f97316"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      fill="none"
-    >
-      <path d="M8 9V4a2 2 0 0 1 4 0v5" fill="#ffffff" />
-      <path d="M16 9V4a2 2 0 0 0-4 0v5" fill="#ffffff" />
-      <path
-        d="M4 14.5c0-3 2.5-5.5 8-5.5s8 2.5 8 5.5-2.5 6.5-8 6.5-8-3.5-8-6.5z"
-        fill="#ffffff"
-      />
-      <circle cx="9" cy="14" r="1.4" fill="#f97316" stroke="none" />
-      <circle cx="15" cy="14" r="1.4" fill="#f97316" stroke="none" />
-      <path d="M12 16.5c-1 0-1.5-.5-1.5-.5m1.5.5c1 0 1.5-.5 1.5-.5m-1.5.5v-1.5" />
-    </g>
+    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+export const IconEyeOff: React.FC<{ size?: number; className?: string }> = ({
+  size = 18,
+  className = '',
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+    <line x1="2" y1="2" x2="22" y2="22" />
   </svg>
 );
 

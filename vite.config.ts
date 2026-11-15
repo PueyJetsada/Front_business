@@ -8,5 +8,15 @@ export default defineConfig({
   server: {
     host: true,
     allowedHosts: true,
+    proxy: {
+      '/api/ai': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+    },
   },
 })

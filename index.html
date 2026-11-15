@@ -2,10 +2,10 @@
 <html lang="th">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="./rabbit-favicon.svg?v=rabbit3" />
-    <link rel="alternate icon" type="image/png" href="./apple-touch-icon.png?v=rabbit3" />
-    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=rabbit3" />
-    <link rel="manifest" href="./manifest.webmanifest?v=rabbit3" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-title" content="CAMPUSHOP" />
     <meta
       name="viewport"
@@ -24,6 +24,12 @@
     <link
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700;800&family=Nunito:wght@700;800;900&display=swap"
       rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
     />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -44,5 +50,12 @@
   <body class="bg-slate-100 text-slate-900 antialiased selection:bg-orange-500 selection:text-white">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
   </body>
 </html>

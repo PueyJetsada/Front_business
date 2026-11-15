@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   getSeatPositionsForRide,
   QUICK_REVIEW_TAGS,
@@ -23,7 +23,6 @@ import {
   IconWallet,
   PassengerBunnySvg,
 } from './Icons';
-
 interface SeatBookingModalProps {
   ride: RideHop;
   activeRide?: RideHop | null;
@@ -50,9 +49,14 @@ interface SeatBookingModalProps {
     | 'select-seat'
     | 'confirm-book'
     | 'active-status'
+    | 'confirm-finish'
     | 'confirm-cancel'
     | 'trip-review';
   onClose: () => void;
+  lang?: 'th' | 'en';
+  onPickOnMap?: () => void;
+  currentDestination?: string;
+  onDestinationChange?: (name: string, pos?: [number, number]) => void;
 }
 
 export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
@@ -73,14 +77,14 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
   onFinishTripWithReview,
   initialStep,
   onClose,
+  lang = 'th',
+  currentDestination,
 }) => {
   const isThisRideBooked = activeBooking?.rideId === ride.id;
   const isBlockedByOtherRide =
     Boolean(activeBooking) && activeBooking?.rideId !== ride.id;
 
-  const isMpvLayout = ride.vehicleType === 'mpv';
-  const isSuvLayout =
-    !isMpvLayout && (ride.vehicleType === 'suv' || ride.totalSeats >= 6);
+  const isSuvLayout = ride.vehicleType === 'suv' || ride.totalSeats >= 6;
   const seatPositions = getSeatPositionsForRide(ride);
 
   const firstFreeSeat =
@@ -92,10 +96,36 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
       : [firstFreeSeat]
   );
 
+  const [chosenDestination, setChosenDestination] = useState<string>(
+    activeBooking?.destination || ride.actualDropOffName || ride.destination || currentDestination || ''
+  );
+
+  // Sync when currentDestination updates (e.g. from user picking on map)
+  useEffect(() => {
+    if (currentDestination) {
+      setChosenDestination(currentDestination);
+    }
+  }, [currentDestination]);
+
+  // Sync when selected ride changes (driver's drop-off)
+  useEffect(() => {
+    if (!isThisRideBooked) {
+      setChosenDestination(ride.actualDropOffName || ride.destination);
+    }
+  }, [ride.id, isThisRideBooked, ride.actualDropOffName, ride.destination]);
+
+  // Sync initialStep when it changes dynamically (e.g. Auto-finish trip -> trip-review)
+  useEffect(() => {
+    if (initialStep) {
+      setStep(initialStep);
+    }
+  }, [initialStep]);
+
   const [step, setStep] = useState<
     | 'select-seat'
     | 'confirm-book'
     | 'active-status'
+    | 'confirm-finish'
     | 'confirm-cancel'
     | 'trip-review'
   >(
@@ -176,13 +206,13 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
             <div className="flex items-center gap-2 text-rose-600">
               <IconShieldCheck size={20} className="shrink-0" />
               <h3 className="text-sm font-black text-slate-900">
-                ไม่สามารถจองทริปซ้อนกันได้
+                {lang === 'en' ? 'Cannot book overlapping trips' : 'ไม่สามารถจองทริปซ้อนกันได้'}
               </h3>
             </div>
             <button
               type="button"
               onClick={onClose}
-              aria-label="ปิดหน้าต่าง"
+              aria-label={lang === 'en' ? 'Close modal' : 'ปิดหน้าต่าง'}
               className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs flex items-center justify-center shrink-0 active:scale-95 transition"
             >
               ✕
@@ -190,19 +220,21 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
           </div>
 
           <div className="bg-amber-50 border border-amber-300 rounded-2xl p-3 text-xs text-slate-800 leading-relaxed font-bold">
-            คุณมีรายการจองที่กำลังดำเนินการอยู่ กรุณาจบทริปหรือยกเลิกรายการเดิมก่อนทำการจองใหม่
+            {lang === 'en'
+              ? 'You have an active ongoing trip. Please complete or cancel your current trip before booking a new one.'
+              : 'คุณมีรายการจองที่กำลังดำเนินการอยู่ กรุณาจบทริปหรือยกเลิกรายการเดิมก่อนทำการจองใหม่'}
           </div>
 
           {activeRide && (
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-1.5 text-xs tabular-nums">
               <div className="text-[10px] font-black text-orange-600">
-                รายการจองที่กำลังดำเนินการอยู่:
+                {lang === 'en' ? 'Active Ongoing Trip:' : 'รายการจองที่กำลังดำเนินการอยู่:'}
               </div>
               <div className="font-black text-slate-900">
                 {activeRide.origin} → {activeRide.destination} ({activeRide.hostName})
               </div>
               <div className="text-[11px] text-slate-600 font-bold">
-                ที่นั่ง: {activeBooking.seatIds.join(', ')} • ยอดชำระสุทธิ ฿
+                {lang === 'en' ? 'Seats:' : 'ที่นั่ง:'} {activeBooking.seatIds.join(', ')} • {lang === 'en' ? 'Net Paid ฿' : 'ยอดชำระสุทธิ ฿'}
                 {activeBooking.netPaid}
               </div>
             </div>
@@ -214,14 +246,14 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
               onClick={onClose}
               className="min-h-[46px] py-2.5 rounded-xl border border-slate-300 text-slate-700 font-black text-xs hover:bg-slate-100 active:scale-95 transition"
             >
-              ปิดหน้าต่าง
+              {lang === 'en' ? 'Close' : 'ปิดหน้าต่าง'}
             </button>
             <button
               type="button"
               onClick={onSwitchToActiveRide}
               className="min-h-[46px] py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-black text-xs shadow-md active:scale-95 transition"
             >
-              ดูสถานะทริปปัจจุบัน →
+              {lang === 'en' ? 'View Current Trip →' : 'ดูสถานะทริปปัจจุบัน →'}
             </button>
           </div>
         </div>
@@ -269,7 +301,9 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
           {meta.shortLabel}
         </span>
         <span className="text-[8px] font-extrabold mt-0.5 opacity-90">
-          {isOccupied ? 'ไม่ว่าง' : isSelected ? '✓ เลือกแล้ว' : 'ว่าง'}
+          {lang === 'en'
+            ? (isOccupied ? 'Occupied' : isSelected ? '✓ Selected' : 'Available')
+            : (isOccupied ? 'ไม่ว่าง' : isSelected ? '✓ เลือกแล้ว' : 'ว่าง')}
         </span>
       </button>
     );
@@ -287,19 +321,23 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
     <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-1.5 text-xs tabular-nums">
       <div className="flex justify-between text-slate-700 font-bold">
         <span>
-          ค่าโดยสารปกติ (หารต่อคน ฿{regularPerPerson} × {seatsCount} ที่นั่ง):
+          {lang === 'en'
+            ? `Regular Fare (฿${regularPerPerson} × ${seatsCount} seat${seatsCount > 1 ? 's' : ''}):`
+            : `ค่าโดยสารปกติ (หารต่อคน ฿${regularPerPerson} × ${seatsCount} ที่นั่ง):`}
         </span>
         <span>฿{regTotal}</span>
       </div>
 
       <div className="flex justify-between text-emerald-700 font-bold">
-        <span>ส่วนลดจาก HOP Premium:</span>
+        <span>{lang === 'en' ? 'HOP Premium Discount:' : 'ส่วนลดจาก HOP Premium:'}</span>
         <span>{premDisc > 0 ? `-฿${premDisc}` : '฿0'}</span>
       </div>
 
       <div className="flex justify-between text-emerald-700 font-bold">
         <span>
-          ส่วนลดจากโค้ดโปรโมชัน{couponCodeUsed ? ` (${couponCodeUsed})` : ''}:
+          {lang === 'en'
+            ? `Promo Code Discount${couponCodeUsed ? ` (${couponCodeUsed})` : ''}:`
+            : `ส่วนลดจากโค้ดโปรโมชัน${couponCodeUsed ? ` (${couponCodeUsed})` : ''}:`}
         </span>
         <span>{promDisc > 0 ? `-฿${promDisc}` : '฿0'}</span>
       </div>
@@ -307,7 +345,7 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
       {/* Prominent Final Net Price */}
       <div className="pt-2 border-t-2 border-slate-200 flex justify-between items-baseline">
         <span className="text-xs font-black text-slate-900">
-          ราคาสุทธิที่ต้องชำระ (ยอดรวมสุดท้าย):
+          {lang === 'en' ? 'Total Net to Pay (Final):' : 'ราคาสุทธิที่ต้องชำระ (ยอดรวมสุดท้าย):'}
         </span>
         <span className="text-lg font-black text-orange-600 font-mono">
           ฿{finalNet}
@@ -318,19 +356,23 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
       <div className="pt-1.5 border-t border-slate-200/80 flex items-center justify-between text-[10px] font-black text-emerald-700">
         <span className="flex items-center gap-1">
           <IconLeaf size={12} />
-          <span>ช่วยลดคาร์บอนและมลพิษจากทริปนี้:</span>
+          <span>{lang === 'en' ? 'CO₂ & emissions saved:' : 'ช่วยลดคาร์บอนและมลพิษจากทริปนี้:'}</span>
         </span>
-        <span>ลดได้ {(ride.co2SavedKg * seatsCount).toFixed(1)} kg CO₂</span>
+        <span>
+          {lang === 'en'
+            ? `Saved ${(ride.co2SavedKg * seatsCount).toFixed(1)} kg CO₂`
+            : `ลดได้ ${(ride.co2SavedKg * seatsCount).toFixed(1)} kg CO₂`}
+        </span>
       </div>
     </div>
   );
 
   const ratingLabels: Record<number, string> = {
-    1: '1 ดาว — ต้องปรับปรุง',
-    2: '2 ดาว — พอใช้',
-    3: '3 ดาว — ปานกลาง',
-    4: '4 ดาว — ดีมาก',
-    5: '5 ดาว — ประทับใจมาก!',
+    1: lang === 'en' ? '1 Star — Needs Improvement' : '1 ดาว — ต้องปรับปรุง',
+    2: lang === 'en' ? '2 Stars — Fair' : '2 ดาว — พอใช้',
+    3: lang === 'en' ? '3 Stars — Average' : '3 ดาว — ปานกลาง',
+    4: lang === 'en' ? '4 Stars — Very Good' : '4 ดาว — ดีมาก',
+    5: lang === 'en' ? '5 Stars — Impressive!' : '5 ดาว — ประทับใจมาก!',
   };
 
   return (
@@ -342,40 +384,46 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white text-slate-900 w-full md:max-w-[460px] max-h-[90dvh] overflow-y-auto custom-scroll rounded-t-[32px] md:rounded-3xl p-4 pb-6 md:pb-5 shadow-2xl border-2 border-orange-500 space-y-3 animate-[sheet-rise_0.22s_cubic-bezier(0.22,1,0.36,1)] safe-bottom"
+        className="bg-white text-slate-900 w-full md:max-w-[460px] max-h-[min(92dvh,calc(100%-1rem))] flex flex-col rounded-t-[32px] md:rounded-3xl shadow-2xl border-2 border-orange-500 animate-[sheet-rise_0.22s_cubic-bezier(0.22,1,0.36,1)] overflow-hidden"
       >
-        {/* Native Bottom Sheet Drag Handle */}
-        <div
-          className="w-11 h-1.5 rounded-full bg-slate-300 mx-auto mb-1"
-          aria-hidden="true"
-        />
+        {/* Fixed Header */}
+        <div className="p-4 pb-2.5 border-b border-slate-200 shrink-0 bg-white">
+          {/* Native Bottom Sheet Drag Handle */}
+          <div
+            className="w-11 h-1.5 rounded-full bg-slate-300 mx-auto mb-1.5"
+            aria-hidden="true"
+          />
 
-        {/* Header */}
-        <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
-          <div>
-            <h3 className="text-sm font-black text-slate-900">
-              {step === 'select-seat' && 'เลือกที่นั่งในรถ'}
-              {step === 'confirm-book' && 'ยืนยันการจองและชำระเงิน'}
-              {step === 'active-status' && 'สถานะทริปที่กำลังเดินทาง'}
-              {step === 'confirm-cancel' && 'ยืนยันการยกเลิกการจอง'}
-              {step === 'trip-review' && 'สรุปการเดินทางและรีวิว'}
-            </h3>
-            <p className="text-[10px] text-slate-500 font-bold">
-              {ride.hostName} • {ride.vehicleLabel}
-              {ride.licensePlate ? ` (${ride.licensePlate})` : ''}
-            </p>
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-black text-slate-900">
+                {step === 'select-seat' && (lang === 'en' ? 'Select Seats & Destination' : 'เลือกที่นั่งในรถ')}
+                {step === 'confirm-book' && (lang === 'en' ? 'Confirm Booking & Pay' : 'ยืนยันการจองและชำระเงิน')}
+                {step === 'active-status' && (lang === 'en' ? 'Ongoing Trip' : 'สถานะทริปที่กำลังเดินทาง')}
+                {step === 'confirm-finish' && (lang === 'en' ? 'Confirm Finish Trip' : 'ยืนยันการสิ้นสุดการเดินทาง (จบทริป)')}
+                {step === 'confirm-cancel' && (lang === 'en' ? 'Confirm Cancel Booking' : 'ยืนยันการยกเลิกการจอง')}
+                {step === 'trip-review' && (lang === 'en' ? 'Trip Review' : 'สรุปการเดินทางและรีวิว')}
+              </h3>
+              <p className="text-[10px] text-slate-500 font-bold">
+                {ride.hostName} • {ride.vehicleLabel}
+                {ride.licensePlate ? ` (${ride.licensePlate})` : ''}
+              </p>
+            </div>
+            {step !== 'trip-review' && step !== 'confirm-finish' && (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="ปิดหน้าต่าง"
+                className="w-10 h-10 min-h-[40px] min-w-[40px] rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs flex items-center justify-center shrink-0 active:scale-95 transition"
+              >
+                ✕
+              </button>
+            )}
           </div>
-          {step !== 'trip-review' && (
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="ปิดหน้าต่าง"
-              className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs flex items-center justify-center shrink-0 active:scale-95 transition"
-            >
-              ✕
-            </button>
-          )}
         </div>
+
+        {/* Scrollable Body Content */}
+        <div className="flex-1 overflow-y-auto custom-scroll p-4 space-y-3">
 
         {/* STEP 1: 2D Visual Car Seat Picker */}
         {step === 'select-seat' && (
@@ -384,37 +432,31 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
             <div className="grid grid-cols-4 gap-1 text-[9px] font-bold text-center bg-slate-50 p-2 rounded-xl border border-slate-200">
               <div className="flex items-center justify-center gap-1">
                 <span className="w-2.5 h-2.5 rounded bg-slate-800 inline-block" />
-                <span>คนขับ</span>
+                <span>{lang === 'en' ? 'Driver' : 'คนขับ'}</span>
               </div>
               <div className="flex items-center justify-center gap-1">
                 <span className="w-2.5 h-2.5 rounded bg-slate-300 inline-block" />
-                <span>ไม่ว่าง</span>
+                <span>{lang === 'en' ? 'Occupied' : 'ไม่ว่าง'}</span>
               </div>
               <div className="flex items-center justify-center gap-1">
                 <span className="w-2.5 h-2.5 rounded bg-emerald-400 inline-block" />
-                <span>ว่าง</span>
+                <span>{lang === 'en' ? 'Available' : 'ว่าง'}</span>
               </div>
               <div className="flex items-center justify-center gap-1">
                 <span className="w-2.5 h-2.5 rounded bg-orange-500 inline-block" />
-                <span>ที่คุณเลือก</span>
+                <span>{lang === 'en' ? 'Selected' : 'ที่คุณเลือก'}</span>
               </div>
             </div>
 
-            {/* 2D Top-Down Car Cabin Frame (Dynamic Sedan 2-Row vs SUV 2-3-2 vs MPV 2-2-3 Captain Seats) */}
+            {/* 2D Top-Down Car Cabin Frame (Dynamic Sedan 2-Row vs SUV/MPV 3-Row) */}
             <div className="mx-auto max-w-[275px] bg-slate-100 border-[3px] border-slate-700 rounded-t-[44px] rounded-b-[26px] p-3 shadow-inner space-y-2 relative">
               <div className="h-5 bg-sky-100/90 border-2 border-slate-400 rounded-t-[28px] rounded-b-lg flex items-center justify-between px-2.5 text-[8.5px] font-black text-slate-700 tracking-wider">
-                <span>หน้ารถ (ทิศทางเดินทาง ▲)</span>
+                <span>{lang === 'en' ? 'Front (Heading ▲)' : 'หน้ารถ (ทิศทางเดินทาง ▲)'}</span>
                 <span className="bg-slate-800 text-orange-400 px-1.5 py-0.5 rounded font-mono text-[8px]">
-                  {isMpvLayout
-                    ? 'MPV / 2-2-3'
-                    : isSuvLayout
-                      ? 'SUV / 2-3-2'
-                      : 'รถเก๋ง / 4 ที่นั่ง'}
+                  {isSuvLayout
+                    ? (lang === 'en' ? 'SUV / 7 Seats' : 'SUV / 7 ที่นั่ง')
+                    : (lang === 'en' ? 'Sedan / 4 Seats' : 'รถเก๋ง / 4 ที่นั่ง')}
                 </span>
-              </div>
-
-              <div className="text-center text-[8px] font-bold text-slate-400 tracking-widest">
-                ─── แถวหน้า: 2 คน (คนขับ 1 + ข้างคนขับ 1) ───
               </div>
 
               <div className="grid grid-cols-2 gap-4 px-2">
@@ -422,40 +464,21 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
 
                 <div className="h-14 rounded-2xl border-2 border-slate-700 bg-slate-800 text-white flex flex-col items-center justify-center p-1 select-none">
                   <IconSteeringWheel size={15} className="text-orange-400 mb-0.5" />
-                  <span className="text-[10px] font-black leading-none">คนขับ</span>
+                  <span className="text-[10px] font-black leading-none">
+                    {lang === 'en' ? 'Driver' : 'คนขับ'}
+                  </span>
                   <span className="text-[8px] text-slate-300 font-bold truncate max-w-full mt-0.5">
                     {ride.hostName.split(' ')[0]}
                   </span>
                 </div>
               </div>
 
-              {isMpvLayout ? (
+              {isSuvLayout ? (
                 <>
                   <div className="text-center text-[8px] font-bold text-slate-400 tracking-widest">
-                    ─── แถวกลาง: 2 คน (เบาะแยก Captain Seat) ───
-                  </div>
-                  <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center px-1">
-                    {renderSeatButton('M1')}
-                    <div className="px-1.5 py-2 rounded-lg border border-dashed border-slate-300 text-[7.5px] font-black text-slate-400 text-center leading-tight">
-                      เบาะแยก
-                      <br />
-                      ทางเดิน
-                    </div>
-                    {renderSeatButton('M2')}
-                  </div>
-                  <div className="text-center text-[8px] font-bold text-slate-400 tracking-widest">
-                    ─── แถวหลังสุด: เบาะ 3 ที่นั่ง ───
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {renderSeatButton('B1')}
-                    {renderSeatButton('B2')}
-                    {renderSeatButton('B3')}
-                  </div>
-                </>
-              ) : isSuvLayout ? (
-                <>
-                  <div className="text-center text-[8px] font-bold text-slate-400 tracking-widest">
-                    ─── แถวสอง: 3 คน ───
+                    {lang === 'en'
+                      ? '─── Row 2 • Middle Row (3 Seats) ───'
+                      : '─── แถวที่ 2 • เบาะแถวกลาง (3 ที่นั่ง) ───'}
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {renderSeatButton('M1')}
@@ -463,7 +486,9 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
                     {renderSeatButton('M3')}
                   </div>
                   <div className="text-center text-[8px] font-bold text-slate-400 tracking-widest">
-                    ─── แถวสาม: 2 คน ───
+                    {lang === 'en'
+                      ? '─── Row 3 • Rear Row (2 Seats) ───'
+                      : '─── แถวที่ 3 • เบาะหลังสุด (2 ที่นั่ง) ───'}
                   </div>
                   <div className="grid grid-cols-2 gap-4 px-5">
                     {renderSeatButton('B1')}
@@ -473,7 +498,9 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
               ) : (
                 <>
                   <div className="text-center text-[8px] font-bold text-slate-400 tracking-widest">
-                    ─── แถวสอง • เบาะหลัง (3 ที่นั่ง) ───
+                    {lang === 'en'
+                      ? '─── Row 2 • Back Row (3 Seats) ───'
+                      : '─── แถวที่ 2 • เบาะหลัง (3 ที่นั่ง) ───'}
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {renderSeatButton('R1')}
@@ -484,30 +511,57 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
               )}
             </div>
 
+            {/* Locked Driver Destination Card (Spec: จุดส่งที่คนขับต้องการไป กับล่างนั้น) */}
+            <div className="bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100/60 border-2 border-orange-400 rounded-2xl p-3 space-y-2 text-xs shadow-sm">
+              <div className="bg-white rounded-xl p-2.5 border border-orange-200/80 shadow-xs flex items-center gap-2.5">
+                <span className="text-xl shrink-0">🎯</span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[9px] font-extrabold text-orange-600 uppercase tracking-wider">
+                    {lang === 'en' ? "Driver's Drop-off Location" : 'จุดส่งที่คนขับต้องการไป'}
+                  </div>
+                  <div className="text-xs font-black text-slate-900 truncate mt-0.5">
+                    {ride.actualDropOffName || ride.destination}
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-[10px] text-slate-600 font-bold leading-relaxed">
+                {lang === 'en'
+                  ? '🔒 Passengers carpool to the same destination as the driver to match vibe and share fares fairly.'
+                  : '🔒 ผู้โดยสารเดินทางไปจุดหมายเดียวกับคนขับ เพื่อให้ตรงตาม Vibe และแชร์ค่ารถอย่างปลอดภัย (ไม่เปลี่ยนปลายทาง)'}
+              </p>
+            </div>
+
             {/* Privacy Gate Notice for Social Contacts */}
             <div className="bg-slate-900 text-slate-100 rounded-xl px-3 py-2 flex items-center justify-between gap-2 text-[10px] font-bold">
               <span className="flex items-center gap-1.5 text-amber-300">
                 <IconLock size={13} className="shrink-0" />
-                <span>ช่องทางติดต่อ IG / Facebook และห้องแชทคนขับ</span>
+                <span>
+                  {lang === 'en'
+                    ? 'Driver IG / Facebook and Chat'
+                    : 'ช่องทางติดต่อ IG / Facebook และห้องแชทคนขับ'}
+                </span>
               </span>
               <span className="text-[9.5px] font-black text-emerald-300 shrink-0">
-                ปลดล็อกหลังชำระเงิน
+                {lang === 'en' ? 'Unlocked after payment' : 'ปลดล็อกหลังชำระเงิน'}
               </span>
             </div>
 
             {/* Seat + Promo + Payment Selectors */}
             <div className="bg-white border border-slate-200 rounded-2xl p-2.5 space-y-2 text-[11px]">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-600">ตำแหน่งที่เลือก:</span>
+                <span className="font-bold text-slate-600">
+                  {lang === 'en' ? 'Selected seats:' : 'ตำแหน่งที่เลือก:'}
+                </span>
                 <span className="font-black text-orange-600">
-                  {selectedSeatLabels} ({seatCount} ที่นั่ง)
+                  {selectedSeatLabels} ({seatCount} {lang === 'en' ? 'seat(s)' : 'ที่นั่ง'})
                 </span>
               </div>
 
               <div className="flex items-center justify-between gap-2">
                 <span className="font-bold text-slate-600 flex items-center gap-1 shrink-0">
                   <IconTicket size={13} className="text-orange-500" />
-                  <span>โค้ดโปรโมชัน:</span>
+                  <span>{lang === 'en' ? 'Promo code:' : 'โค้ดโปรโมชัน:'}</span>
                 </span>
                 <select
                   value={selectedCouponCode || ''}
@@ -516,7 +570,9 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
                   }
                   className="bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-[10px] font-black text-slate-900"
                 >
-                  <option value="">ไม่ใช้โค้ดส่วนลด</option>
+                  <option value="">
+                    {lang === 'en' ? 'No promo code' : 'ไม่ใช้โค้ดส่วนลด'}
+                  </option>
                   {claimedCoupons.map((c) => (
                     <option key={c.code} value={c.code}>
                       {c.code} — ลด {c.percent}% (สูงสุด ฿{c.maxDiscountBaht})
@@ -528,7 +584,7 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
               <div className="flex items-center justify-between gap-2">
                 <span className="font-bold text-slate-600 flex items-center gap-1 shrink-0">
                   <IconWallet size={13} className="text-teal-600" />
-                  <span>วิธีชำระเงิน:</span>
+                  <span>{lang === 'en' ? 'Payment method:' : 'วิธีชำระเงิน:'}</span>
                 </span>
                 <select
                   value={selectedPaymentId}
@@ -556,10 +612,34 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
 
             <button
               type="button"
-              onClick={() => setStep('confirm-book')}
-              className="w-full min-h-[46px] bg-orange-500 hover:bg-orange-600 text-white font-black text-xs py-3 rounded-xl shadow-md active:scale-95 transition"
+              disabled={selectedSeats.length === 0}
+              onClick={() =>
+                onConfirmBooking({
+                  rideId: ride.id,
+                  seatIds: selectedSeats,
+                  paymentMethodId: activePayment.id,
+                  couponCode: activeCoupon?.code,
+                  regularFareTotal,
+                  premiumDiscount,
+                  promoDiscount,
+                  netPaid: netTotal,
+                  destination: chosenDestination,
+                })
+              }
+              className={`w-full min-h-[48px] text-white font-black text-xs py-3 rounded-xl shadow-lg flex items-center justify-center gap-1.5 active:scale-95 transition ${
+                selectedSeats.length === 0
+                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 shadow-orange-500/30'
+              }`}
             >
-              ดำเนินการต่อเพื่อยืนยันการจอง (฿{netTotal}) →
+              <IconCheck size={16} />
+              <span>
+                {selectedSeats.length === 0
+                  ? (lang === 'en' ? 'Please select seat' : 'กรุณาเลือกที่นั่ง')
+                  : (lang === 'en'
+                      ? `Confirm Booking (฿${netTotal})`
+                      : `ยืนยันการจองที่นั่ง (฿${netTotal})`)}
+              </span>
             </button>
           </>
         )}
@@ -571,44 +651,58 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
               <IconShieldCheck size={16} className="text-orange-600 shrink-0 mt-0.5" />
               <div>
                 <div className="font-black text-slate-900">
-                  กรุณาตรวจสอบรายละเอียดก่อนยืนยันการจอง
+                  {lang === 'en'
+                    ? 'Please verify details before booking'
+                    : 'กรุณาตรวจสอบรายละเอียดก่อนยืนยันการจอง'}
                 </div>
                 <div className="text-[10px] text-slate-600 mt-0.5">
-                  สามารถจองได้ทีละ 1 ทริป เมื่อยืนยันระบบจะล็อกที่นั่งและชำระเงินทันที
+                  {lang === 'en'
+                    ? 'Only 1 active trip allowed. Confirming will lock seats and charge payment immediately.'
+                    : 'สามารถจองได้ทีละ 1 ทริป เมื่อยืนยันระบบจะล็อกที่นั่งและชำระเงินทันที'}
                 </div>
               </div>
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl p-3 space-y-1.5 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-bold">เส้นทาง:</span>
-                <span className="font-black text-slate-900 flex items-center gap-1">
-                  <IconPin size={12} className="text-orange-500" />
-                  {ride.origin} → {ride.actualDropOffName}
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500 font-bold">
+                  {lang === 'en' ? 'Route:' : 'เส้นทาง:'}
+                </span>
+                <span className="font-black text-slate-900 flex items-center gap-1 text-right">
+                  <IconPin size={12} className="text-orange-500 shrink-0" />
+                  <span>{ride.origin} → {chosenDestination}</span>
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500 font-bold">รถและคนขับ:</span>
+                <span className="text-slate-500 font-bold">
+                  {lang === 'en' ? 'Vehicle & Driver:' : 'รถและคนขับ:'}
+                </span>
                 <span className="font-black text-slate-900">
                   {ride.hostName} ({ride.vehicleLabel})
                 </span>
               </div>
               {ride.licensePlate && (
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500 font-bold">ป้ายทะเบียน:</span>
+                  <span className="text-slate-500 font-bold">
+                    {lang === 'en' ? 'License Plate:' : 'ป้ายทะเบียน:'}
+                  </span>
                   <span className="plate-badge font-mono font-black text-amber-300 bg-slate-900 border border-amber-400 px-2 py-0.5 rounded-md text-[11px] tracking-wider shadow-sm">
                     {ride.licensePlate}
                   </span>
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-slate-500 font-bold">ที่นั่งที่เลือก:</span>
+                <span className="text-slate-500 font-bold">
+                  {lang === 'en' ? 'Selected Seats:' : 'ที่นั่งที่เลือก:'}
+                </span>
                 <span className="font-black text-orange-600">
-                  {selectedSeatLabels} ({seatCount} ที่นั่ง)
+                  {selectedSeatLabels} ({seatCount} {lang === 'en' ? 'seat(s)' : 'ที่นั่ง'})
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500 font-bold">วิธีชำระเงิน:</span>
+                <span className="text-slate-500 font-bold">
+                  {lang === 'en' ? 'Payment Method:' : 'วิธีชำระเงิน:'}
+                </span>
                 <span className="font-bold text-slate-900">{activePayment.name}</span>
               </div>
             </div>
@@ -629,7 +723,7 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
                 onClick={() => setStep('select-seat')}
                 className="py-2.5 rounded-xl border border-slate-300 text-slate-700 font-black text-xs hover:bg-slate-100 transition"
               >
-                ← แก้ไขที่นั่ง
+                {lang === 'en' ? '← Change Seats' : '← แก้ไขที่นั่ง'}
               </button>
               <button
                 type="button"
@@ -643,12 +737,17 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
                     premiumDiscount,
                     promoDiscount,
                     netPaid: netTotal,
+                    destination: chosenDestination,
                   })
                 }
                 className="py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md flex items-center justify-center gap-1 transition"
               >
                 <IconCheck size={14} />
-                <span>ยืนยันการจอง (฿{netTotal})</span>
+                <span>
+                  {lang === 'en'
+                    ? `Confirm Booking (฿${netTotal})`
+                    : `ยืนยันการจอง (฿${netTotal})`}
+                </span>
               </button>
             </div>
           </div>
@@ -668,7 +767,7 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
                 </div>
                 <div>
                   <span className="text-[9px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-                    กำลังเดินทาง • ล็อกที่นั่งแล้ว
+                    {lang === 'en' ? 'Ongoing Trip • Seats Locked' : 'กำลังเดินทาง • ล็อกที่นั่งแล้ว'}
                   </span>
                   <div className="text-xs font-black text-slate-900 mt-1">
                     {ride.origin} → {ride.destination}
@@ -677,7 +776,8 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
               </div>
               <div className="text-right tabular-nums">
                 <div className="text-xs font-black text-emerald-800">
-                  ที่นั่ง {activeBooking.seatIds.join(', ')}
+                  {lang === 'en' ? 'Seats: ' : 'ที่นั่ง '}
+                  {activeBooking.seatIds.join(', ')}
                 </div>
                 <div className="text-[10px] font-bold text-slate-500">
                   {ride.licensePlate || ride.vehicleLabel}
@@ -690,7 +790,11 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[10.5px] font-black text-emerald-400 flex items-center gap-1">
                   <IconCheck size={13} />
-                  <span>ปลดล็อกช่องทางติดต่อคนขับและแชทในทริปแล้ว</span>
+                  <span>
+                    {lang === 'en'
+                      ? 'Driver contact and trip chat unlocked'
+                      : 'ปลดล็อกช่องทางติดต่อคนขับและแชทในทริปแล้ว'}
+                  </span>
                 </span>
                 <span className="text-[9.5px] font-bold text-slate-300">
                   {ride.hostName}
@@ -731,7 +835,11 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
                   className="w-full py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition"
                 >
                   <IconChatBubble size={14} />
-                  <span>💬 แชทเพื่อนร่วมทาง / นัดจุดรับกับ {ride.hostName.split(' ')[0]}</span>
+                  <span>
+                    {lang === 'en'
+                      ? `💬 Chat with ${ride.hostName.split(' ')[0]} / Pickup info`
+                      : `💬 แชทเพื่อนร่วมทาง / นัดจุดรับกับ ${ride.hostName.split(' ')[0]}`}
+                  </span>
                 </button>
               )}
             </div>
@@ -746,14 +854,18 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
               activeBooking.couponCode
             )}
 
-            {/* Primary Action: Complete Trip & Open Rating/Review UI */}
+            {/* Primary Action: Complete Trip & Open Confirmation Modal */}
             <button
               type="button"
-              onClick={() => setStep('trip-review')}
-              className="w-full py-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-black text-xs shadow-md flex items-center justify-center gap-1.5 transition"
+              onClick={() => setStep('confirm-finish')}
+              className="w-full py-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-black text-xs shadow-md flex items-center justify-center gap-1.5 transition active:scale-95"
             >
               <IconCheck size={15} />
-              <span>เดินทางถึงจุดหมาย / จบทริป</span>
+              <span>
+                {lang === 'en'
+                  ? 'Arrived at Destination / Finish Trip'
+                  : 'เดินทางถึงจุดหมาย / จบทริป'}
+              </span>
             </button>
 
             <div className="grid grid-cols-2 gap-2">
@@ -762,14 +874,90 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
                 onClick={onClose}
                 className="py-2 rounded-xl border border-slate-300 text-slate-700 font-black text-xs hover:bg-slate-100 transition"
               >
-                กลับหน้าหลัก
+                {lang === 'en' ? 'Back to Home' : 'กลับหน้าหลัก'}
               </button>
               <button
                 type="button"
                 onClick={() => setStep('confirm-cancel')}
                 className="py-2 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-black text-xs transition"
               >
-                ยกเลิกการจองทริปนี้
+                {lang === 'en' ? 'Cancel this booking' : 'ยกเลิกการจองทริปนี้'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP: Double Confirmation for Finishing/Completing the Trip */}
+        {step === 'confirm-finish' && activeBooking && (
+          <div className="space-y-3">
+            <div className="bg-emerald-50 border-2 border-emerald-500 rounded-2xl p-4 text-xs text-emerald-950 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-lg shadow-sm shrink-0">
+                  ✓
+                </div>
+                <div>
+                  <div className="font-black text-sm text-emerald-900">
+                    {lang === 'en'
+                      ? 'Confirm you have reached your destination?'
+                      : 'ยืนยันว่าคุณเดินทางถึงจุดหมายแล้ว?'}
+                  </div>
+                  <div className="text-[10px] text-emerald-700 font-bold">
+                    {lang === 'en'
+                      ? 'Please ensure the driver has arrived at your destination before completing.'
+                      : 'โปรดยืนยันว่าคนขับส่งคุณถึงที่หมายจริงก่อนทำการจบทริป'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/90 rounded-xl p-3 text-xs space-y-1.5 text-slate-700 border border-emerald-200">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-bold">
+                    {lang === 'en' ? 'Destination:' : 'จุดหมายปลายทาง:'}
+                  </span>
+                  <span className="font-black text-slate-900 text-right">
+                    {activeBooking.destination || ride.actualDropOffName || ride.destination}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-bold">
+                    {lang === 'en' ? 'Driver:' : 'คนขับ:'}
+                  </span>
+                  <span className="font-black text-slate-900">
+                    {ride.hostName} ({ride.vehicleLabel})
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+                  <span className="text-slate-500 font-bold">
+                    {lang === 'en' ? 'Net charged:' : 'ยอดสุทธิที่ตัดจ่าย:'}
+                  </span>
+                  <span className="font-black text-emerald-700 text-sm font-mono">
+                    ฿{activeBooking.netPaid}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
+                {lang === 'en'
+                  ? '* Confirming will complete payment and take you to rate and review the driver.'
+                  : '* เมื่อกดยืนยันจบ Trip ระบบจะตัดชำระเงินและพาคุณไปยังหน้าต่างให้คะแนนและรีวิวคนขับทันที'}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setStep('active-status')}
+                className="py-3 rounded-xl border border-slate-300 text-slate-700 font-black text-xs hover:bg-slate-100 transition active:scale-95"
+              >
+                {lang === 'en' ? '← Not finished / Continue' : '← ยังไม่จบ / เดินทางต่อ'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep('trip-review')}
+                className="py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md flex items-center justify-center gap-1.5 transition active:scale-95"
+              >
+                <IconCheck size={15} />
+                <span>{lang === 'en' ? 'Confirm Finish Trip' : 'ยืนยันจบ Trip'}</span>
               </button>
             </div>
           </div>
@@ -779,15 +967,33 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
         {step === 'confirm-cancel' && activeBooking && (
           <div className="space-y-3">
             <div className="bg-rose-50 border border-rose-200 rounded-2xl p-3 text-xs text-rose-900 space-y-1">
-              <div className="font-black">ต้องการยกเลิกที่นั่งในทริปนี้ใช่หรือไม่?</div>
+              <div className="font-black">
+                {lang === 'en'
+                  ? 'Are you sure you want to cancel this booking?'
+                  : 'ต้องการยกเลิกที่นั่งในทริปนี้ใช่หรือไม่?'}
+              </div>
               <p className="text-[11px] text-slate-600">
-                ระบบจะคืนสิทธิ์ที่นั่ง{' '}
-                <strong className="text-slate-900">
-                  {activeBooking.seatIds.join(', ')}
-                </strong>{' '}
-                และคืนเงิน{' '}
-                <strong className="text-orange-600">฿{activeBooking.netPaid}</strong>{' '}
-                กลับไปยังช่องทางชำระเงินของคุณทันที
+                {lang === 'en' ? (
+                  <>
+                    The system will release seats{' '}
+                    <strong className="text-slate-900">
+                      {activeBooking.seatIds.join(', ')}
+                    </strong>{' '}
+                    and refund{' '}
+                    <strong className="text-orange-600">฿{activeBooking.netPaid}</strong>{' '}
+                    to your payment method immediately.
+                  </>
+                ) : (
+                  <>
+                    ระบบจะคืนสิทธิ์ที่นั่ง{' '}
+                    <strong className="text-slate-900">
+                      {activeBooking.seatIds.join(', ')}
+                    </strong>{' '}
+                    และคืนเงิน{' '}
+                    <strong className="text-orange-600">฿{activeBooking.netPaid}</strong>{' '}
+                    กลับไปยังช่องทางชำระเงินของคุณทันที
+                  </>
+                )}
               </p>
             </div>
 
@@ -806,14 +1012,14 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
                 onClick={() => setStep('active-status')}
                 className="py-2.5 rounded-xl border border-slate-300 text-slate-700 font-black text-xs hover:bg-slate-100 transition"
               >
-                ← ไม่ยกเลิก
+                {lang === 'en' ? '← Keep Booking' : '← ไม่ยกเลิก'}
               </button>
               <button
                 type="button"
                 onClick={() => onConfirmCancelBooking(ride.id)}
                 className="py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-md transition"
               >
-                ยืนยันยกเลิกการจอง
+                {lang === 'en' ? 'Confirm Cancellation' : 'ยืนยันยกเลิกการจอง'}
               </button>
             </div>
           </div>
@@ -827,17 +1033,23 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-emerald-900 flex items-center gap-1">
                   <IconCheck size={15} className="text-emerald-600" />
-                  <span>เดินทางถึงจุดหมายเรียบร้อย!</span>
+                  <span>
+                    {lang === 'en'
+                      ? 'Arrived at Destination Successfully!'
+                      : 'เดินทางถึงจุดหมายเรียบร้อย!'}
+                  </span>
                 </span>
                 <span className="text-[10px] font-black bg-emerald-600 text-white px-2 py-0.5 rounded-full tabular-nums">
-                  ชำระสำเร็จ ฿{activeBooking.netPaid}
+                  {lang === 'en' ? 'Paid ฿' : 'ชำระสำเร็จ ฿'}{activeBooking.netPaid}
                 </span>
               </div>
               <div className="text-[11px] font-bold text-slate-700">
-                {ride.origin} → {ride.actualDropOffName} ({ride.hostName})
+                {ride.origin} → {ride.actualDropOffName || ride.destination} ({ride.hostName})
               </div>
               <div className="text-[10px] font-bold text-emerald-800">
-                ✓ ปลดล็อกสถานะการจองแล้ว คุณสามารถจองทริปรอบถัดไปได้ทันที
+                {lang === 'en'
+                  ? '✓ Booking unlocked. You can now book your next trip anytime.'
+                  : '✓ ปลดล็อกสถานะการจองแล้ว คุณสามารถจองทริปรอบถัดไปได้ทันที'}
               </div>
             </div>
 
@@ -854,7 +1066,9 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
             {/* 2. 1 - 5 Star Rating */}
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-center space-y-2">
               <div className="text-xs font-black text-slate-900">
-                ให้คะแนนเพื่อนร่วมทาง / คนขับ ({ride.hostName})
+                {lang === 'en'
+                  ? `Rate carpool buddy / driver (${ride.hostName})`
+                  : `ให้คะแนนเพื่อนร่วมทาง / คนขับ (${ride.hostName})`}
               </div>
               <div className="flex justify-center gap-2">
                 {[1, 2, 3, 4, 5].map((star) => {
@@ -864,7 +1078,7 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
                       key={star}
                       type="button"
                       onClick={() => setRating(star)}
-                      aria-label={`ให้คะแนน ${star} ดาว`}
+                      aria-label={lang === 'en' ? `Rate ${star} stars` : `ให้คะแนน ${star} ดาว`}
                       className={`w-11 h-11 min-h-[44px] min-w-[44px] rounded-xl border-2 text-lg flex items-center justify-center transition transform active:scale-95 ${
                         active
                           ? 'bg-orange-500 border-orange-500 text-white scale-105 shadow-sm'
@@ -884,11 +1098,20 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
             {/* 3. Quick Compliment Tags */}
             <div className="space-y-1.5">
               <div className="text-xs font-black text-slate-900">
-                เลือกคำชมด่วน (เลือกได้หลายข้อ)
+                {lang === 'en'
+                  ? 'Quick compliments (Multi-select)'
+                  : 'เลือกคำชมด่วน (เลือกได้หลายข้อ)'}
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {QUICK_REVIEW_TAGS.map((tag) => {
                   const isSelected = selectedCompliments.includes(tag);
+                  const tagLabelMap: Record<string, string> = {
+                    'ขับรถนุ่มปลอดภัย': lang === 'en' ? 'Smooth & safe driving' : 'ขับรถนุ่มปลอดภัย',
+                    'ตรงต่อเวลา': lang === 'en' ? 'Punctual & on time' : 'ตรงต่อเวลา',
+                    'เทสเพลงดีมาก': lang === 'en' ? 'Great music taste' : 'เทสเพลงดีมาก',
+                    'คุยสนุก เป็นกันเอง': lang === 'en' ? 'Friendly & conversational' : 'คุยสนุก เป็นกันเอง',
+                    'รถสะอาด แอร์เย็น': lang === 'en' ? 'Clean car & cool AC' : 'รถสะอาด แอร์เย็น',
+                  };
                   return (
                     <button
                       key={tag}
@@ -901,7 +1124,7 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
                       }`}
                     >
                       {isSelected && <IconCheck size={11} />}
-                      <span>{tag}</span>
+                      <span>{tagLabelMap[tag] || tag}</span>
                     </button>
                   );
                 })}
@@ -911,13 +1134,19 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
             {/* 4. Optional Review Comment Box */}
             <div>
               <label className="text-[11px] font-black text-slate-700 block mb-1">
-                เขียนรีวิวเพิ่มเติม (ไม่บังคับ)
+                {lang === 'en'
+                  ? 'Additional feedback (Optional)'
+                  : 'เขียนรีวิวเพิ่มเติม (ไม่บังคับ)'}
               </label>
               <textarea
                 rows={2}
                 value={reviewComment}
                 onChange={(e) => setReviewComment(e.target.value)}
-                placeholder="เขียนความประทับใจหรือข้อเสนอแนะ..."
+                placeholder={
+                  lang === 'en'
+                    ? 'Write impressions or recommendations...'
+                    : 'เขียนความประทับใจหรือข้อเสนอแนะ...'
+                }
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs font-medium text-slate-800 resize-none"
               />
             </div>
@@ -935,7 +1164,59 @@ export const SeatBookingModal: React.FC<SeatBookingModalProps> = ({
               }
               className="w-full py-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-black text-xs shadow-lg transition"
             >
-              ส่งรีวิวและกลับสู่หน้าหลัก →
+              {lang === 'en'
+                ? 'Submit Review & Back to Home →'
+                : 'ส่งรีวิวและกลับสู่หน้าหลัก →'}
+            </button>
+          </div>
+        )}
+        </div>
+
+        {/* ALWAYS VISIBLE STICKY FOOTER ACTION BAR (Never Hidden or Pushed Off-Screen) */}
+        {step === 'select-seat' && (
+          <div className="p-3 bg-white border-t border-slate-200 shrink-0 flex items-center justify-between gap-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] safe-bottom z-10">
+            <div className="min-w-0 pr-1">
+              <div className="text-[9.5px] font-bold text-slate-500">
+                {lang === 'en' ? 'Total to Pay' : 'ราคาสุทธิที่ต้องชำระ'}
+              </div>
+              <div className="text-xl font-black text-orange-600 font-mono leading-none mt-0.5">
+                ฿{netTotal}
+              </div>
+              <div className="text-[8.5px] font-bold text-slate-400 truncate mt-0.5">
+                {selectedSeatLabels} ({seatCount} {lang === 'en' ? 'seat' : 'ที่นั่ง'})
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={selectedSeats.length === 0}
+              onClick={() =>
+                onConfirmBooking({
+                  rideId: ride.id,
+                  seatIds: selectedSeats,
+                  paymentMethodId: activePayment.id,
+                  couponCode: activeCoupon?.code,
+                  regularFareTotal,
+                  premiumDiscount,
+                  promoDiscount,
+                  netPaid: netTotal,
+                  destination: chosenDestination,
+                })
+              }
+              className={`flex-1 min-h-[48px] text-white font-black text-xs py-3 px-4 rounded-xl shadow-lg flex items-center justify-center gap-1.5 transition active:scale-95 ${
+                selectedSeats.length === 0
+                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 shadow-orange-500/30'
+              }`}
+            >
+              <IconCheck size={16} />
+              <span>
+                {selectedSeats.length === 0
+                  ? (lang === 'en' ? 'Please select seat' : 'กรุณาเลือกที่นั่ง')
+                  : (lang === 'en'
+                      ? `Confirm Booking (฿${netTotal})`
+                      : `ยืนยันการจองที่นั่ง (฿${netTotal})`)}
+              </span>
             </button>
           </div>
         )}

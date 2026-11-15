@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createAiWatcher, sendConciergeMessage } from '../config/api';
 import type {
   AutoBookWatcher,
   BookedRideDetail,
@@ -38,6 +39,7 @@ interface FriendChatItem {
 }
 
 interface AiConciergeProps {
+  currentUserId?: number;
   isPremium: boolean;
   isTablet?: boolean;
   onOpenPremiumModal: () => void;
@@ -88,12 +90,13 @@ const DEFAULT_FRIEND_THREADS: Record<string, FriendChatItem[]> = {
 };
 
 export const AiConciergeScreen: React.FC<AiConciergeProps> = ({
+  currentUserId = 4,
   isPremium,
   isTablet = false,
   onOpenPremiumModal,
   messages,
   onChangeMessages,
-  slotStep,
+  slotStep: _slotStep,
   onChangeSlotStep,
   draftSlots,
   onChangeDraftSlots,
@@ -109,6 +112,11 @@ export const AiConciergeScreen: React.FC<AiConciergeProps> = ({
   onSelectFriendRideId,
 }) => {
   const [inputText, setInputText] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [isComplete, setIsComplete] = useState(false);
+  const [autoBook, setAutoBook] = useState(false);
+  const [quickChips, setQuickChips] = useState<string[]>([]);
   const [confirmCancelWatcherId, setConfirmCancelWatcherId] = useState<string | null>(
     null
   );
@@ -172,144 +180,146 @@ export const AiConciergeScreen: React.FC<AiConciergeProps> = ({
     setFriendInputText('');
   };
 
-  const handleUserSend = (rawText: string) => {
-    const text = rawText.trim();
-    if (!text) return;
+  const formatCurrentTime = () => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  };
 
+  const handleResetSlots = () => {
+    onChangeDraftSlots({
+      origin: '',
+      destination: '',
+      time: '',
+      seats: 0,
+      maxWalkMeters: 0,
+    });
+    setAutoBook(false);
+    setIsComplete(false);
+    setQuickChips([]);
+    setAiError(null);
+    onChangeSlotStep('idle');
+  };
+
+  const handleUserSend = async (rawText: string) => {
+    const text = rawText.trim();
+    if (!text || isSending) return;
+
+    const timestamp = formatCurrentTime();
     const userMsg: ChatMessage = {
       id: `u-${Date.now()}`,
       sender: 'user',
       text,
-      timestamp: '09:41',
+      timestamp,
     };
 
     setInputText('');
+    setAiError(null);
+    setIsSending(true);
+    onChangeMessages((prev) => [...prev, userMsg]);
 
-    if (slotStep === 'idle') {
-      const isBangkadi = text.includes('บางกระดี่');
-      const detectedDest = isBangkadi ? 'SIIT บางกระดี่' : 'คอนโด B';
-      const timeMatch = text.match(/(\d{1,2}[.:]\d{2}|\d{1,2}\s*โมง)/);
-      const detectedTime = timeMatch
-        ? timeMatch[0].replace('.', ':') +
-          (timeMatch[0].includes('น.') ? '' : ' น.')
-        : '09:00 น.';
+    try {
+      const currentSlotsPayload = {
+        origin: draftSlots.origin || undefined,
+        destination: draftSlots.destination || undefined,
+        time_label: draftSlots.time || undefined,
+        seats_needed: draftSlots.seats || undefined,
+        max_walk_meters: draftSlots.maxWalkMeters || undefined,
+        auto_book: autoBook,
+      };
 
-      onChangeDraftSlots({
-        origin: '',
-        destination: detectedDest,
-        time: detectedTime,
-        seats: 0,
-        maxWalkMeters: 0,
+      const aiRes = await sendConciergeMessage({
+        user_id: currentUserId,
+        message: text,
+        current_slots: currentSlotsPayload,
       });
 
+      const nextOrigin = aiRes.slots?.origin || '';
+      const nextDest = aiRes.slots?.destination || '';
+      const nextTime = aiRes.slots?.time_label || '';
+      const nextSeats = aiRes.slots?.seats_needed || 0;
+      const nextWalk = aiRes.slots?.max_walk_meters ?? draftSlots.maxWalkMeters ?? 350;
+      const nextAutoBook = Boolean(aiRes.slots?.auto_book ?? autoBook);
+
+      onChangeDraftSlots({
+        origin: nextOrigin,
+        destination: nextDest,
+        time: nextTime,
+        seats: nextSeats,
+        maxWalkMeters: nextWalk,
+      });
+      setAutoBook(nextAutoBook);
+      setIsComplete(Boolean(aiRes.is_complete));
+      setQuickChips(Array.isArray(aiRes.quick_chips) ? aiRes.quick_chips : []);
+
+      if (aiRes.is_complete) {
+        let watcherStatus: 'watching' | 'matched' = 'watching';
+        let watcherId = `w-${Date.now()}`;
+        try {
+          const watcherRes = await createAiWatcher({
+            user_id: currentUserId,
+            origin: nextOrigin,
+            destination: nextDest,
+            time_label: nextTime,
+            seats_needed: nextSeats || 1,
+            max_walk_meters: Math.min(500, nextWalk || 350),
+            vibe_preference: aiRes.slots?.vibe_preference || 'Indie • Game • สายชวนคุย',
+          });
+          if (watcherRes?.watcher_id) watcherId = `w-${watcherRes.watcher_id}`;
+          if (watcherRes?.status === 'matched') watcherStatus = 'matched';
+        } catch {
+          // Watcher persistence error does not block displaying the AI reply
+        }
+
+        onAddWatcher({
+          id: watcherId,
+          origin: nextOrigin,
+          destination: nextDest,
+          timeLabel: `วันนี้/พรุ่งนี้ • ${nextTime}`,
+          seats: nextSeats || 1,
+          maxWalkMeters: Math.min(500, nextWalk || 350),
+          vibePreference: aiRes.slots?.vibe_preference || 'Indie • Game • สายชวนคุย',
+          status: watcherStatus,
+          createdAt: 'เมื่อสักครู่',
+        });
+        onChangeSlotStep('idle');
+      } else if (aiRes.missing_slots?.includes('seats_needed')) {
+        onChangeSlotStep('ask_seats');
+      } else if (aiRes.missing_slots?.includes('origin')) {
+        onChangeSlotStep('ask_pickup');
+      } else {
+        onChangeSlotStep('ask_walk');
+      }
+
+      const responseText = aiRes.reply || aiRes.response || '';
       const aiReply: ChatMessage = {
         id: `ai-${Date.now() + 1}`,
         sender: 'ai',
-        text: `รับทราบครับ! ต้องการเดินทางไป "${detectedDest}" รอบเวลา ${detectedTime} — ต้องการจองสำหรับกี่ที่นั่งครับ?`,
-        timestamp: '09:41',
+        text: responseText,
+        timestamp: formatCurrentTime(),
         slotSummary: {
-          destination: detectedDest,
-          time: detectedTime,
+          origin: nextOrigin || undefined,
+          destination: nextDest || undefined,
+          time: nextTime || undefined,
+          seats: nextSeats || undefined,
+          maxWalkMeters: nextWalk || undefined,
         },
       };
-
-      onChangeMessages((prev) => [...prev, userMsg, aiReply]);
-      onChangeSlotStep('ask_seats');
-      return;
-    }
-
-    if (slotStep === 'ask_seats') {
-      const numMatch = text.match(/\d+/);
-      const parsedSeats = numMatch
-        ? Math.min(4, Math.max(1, parseInt(numMatch[0], 10)))
-        : 1;
-      const updated = { ...draftSlots, seats: parsedSeats };
-      onChangeDraftSlots(updated);
-
-      const aiReply: ChatMessage = {
-        id: `ai-${Date.now() + 1}`,
+      onChangeMessages((prev) => [...prev, aiReply]);
+    } catch (err) {
+      const errorDetail =
+        err instanceof Error ? err.message : 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้';
+      setAiError(
+        `ไม่สามารถเชื่อมต่อบริการ AI Concierge (http://localhost:8000/api/ai/concierge) ได้: ${errorDetail}`
+      );
+      const errorMsg: ChatMessage = {
+        id: `ai-err-${Date.now() + 1}`,
         sender: 'ai',
-        text: `บันทึก ${parsedSeats} ที่นั่งเรียบร้อยครับ! รับจุดขึ้นรถที่ "SIIT รังสิต" เลยไหมครับ หรือต้องการขึ้นที่จุดไหน?`,
-        timestamp: '09:41',
-        slotSummary: {
-          destination: updated.destination,
-          time: updated.time,
-          seats: parsedSeats,
-        },
+        text: 'ขออภัยครับ ขณะนี้ไม่สามารถเชื่อมต่อบริการ AI Concierge (พอร์ต 8000) ได้ กรุณาตรวจสอบว่า FastAPI server กำลังทำงานอยู่ แล้วลองส่งข้อความใหม่อีกครั้งครับ',
+        timestamp: formatCurrentTime(),
       };
-
-      onChangeMessages((prev) => [...prev, userMsg, aiReply]);
-      onChangeSlotStep('ask_pickup');
-      return;
-    }
-
-    if (slotStep === 'ask_pickup') {
-      let pickup = 'SIIT รังสิต';
-      if (text.toLowerCase().includes('dome')) pickup = 'TU Dome';
-      else if (text.toLowerCase().includes('kave')) pickup = 'Kave TU';
-      else if (text.includes('บางกระดี่')) pickup = 'SIIT บางกระดี่';
-
-      const updated = { ...draftSlots, origin: pickup };
-      onChangeDraftSlots(updated);
-
-      const aiReply: ChatMessage = {
-        id: `ai-${Date.now() + 1}`,
-        sender: 'ai',
-        text: `รับที่ "${pickup}" นะครับ คำถามสุดท้าย: ยอมรับระยะเดินจากจุดส่งได้ไม่เกินกี่เมตรครับ? (จำกัดสูงสุดไม่เกิน 500 เมตร)`,
-        timestamp: '09:41',
-        slotSummary: {
-          origin: pickup,
-          destination: updated.destination,
-          time: updated.time,
-          seats: updated.seats,
-        },
-      };
-
-      onChangeMessages((prev) => [...prev, userMsg, aiReply]);
-      onChangeSlotStep('ask_walk');
-      return;
-    }
-
-    if (slotStep === 'ask_walk') {
-      const numMatch = text.match(/\d+/);
-      const rawMeters = numMatch ? parseInt(numMatch[0], 10) : 100;
-      const cappedMeters = Math.min(500, Math.max(0, rawMeters));
-      const wasOverLimit = rawMeters > 500;
-
-      const finalWatcher: AutoBookWatcher = {
-        id: `w-${Date.now()}`,
-        origin: draftSlots.origin || 'SIIT รังสิต',
-        destination: draftSlots.destination,
-        timeLabel: `วันนี้/พรุ่งนี้ • ${draftSlots.time}`,
-        seats: draftSlots.seats || 1,
-        maxWalkMeters: cappedMeters,
-        vibePreference: 'Indie • Game • สายชวนคุย',
-        status: 'watching',
-        createdAt: 'เมื่อสักครู่',
-      };
-
-      onAddWatcher(finalWatcher);
-
-      const guardrailNote = wasOverLimit
-        ? ` (คุณระบุ ${rawMeters}m ระบบจึงปรับให้ไม่เกินเพดานสูงสุด 500m)`
-        : '';
-
-      const aiReply: ChatMessage = {
-        id: `ai-${Date.now() + 1}`,
-        sender: 'ai',
-        text: `ข้อมูลครบถ้วนแล้วครับ!${guardrailNote} เปิดระบบรอจองอัตโนมัติแบบเรียลไทม์สำหรับเส้นทาง "${finalWatcher.origin} → ${finalWatcher.destination}" เวลา ${draftSlots.time} (${finalWatcher.seats} ที่นั่ง, เดินไม่เกิน ${cappedMeters}m) เรียบร้อย ทันทีที่มีคนเปิดทริปตรงเงื่อนไข ระบบจะจับคู่และจองที่นั่งให้อัตโนมัติทันทีครับ!`,
-        timestamp: '09:42',
-        slotSummary: {
-          origin: finalWatcher.origin,
-          destination: finalWatcher.destination,
-          time: draftSlots.time,
-          seats: finalWatcher.seats,
-          maxWalkMeters: cappedMeters,
-        },
-      };
-
-      onChangeMessages((prev) => [...prev, userMsg, aiReply]);
-      onChangeSlotStep('idle');
+      onChangeMessages((prev) => [...prev, errorMsg]);
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -827,93 +837,85 @@ export const AiConciergeScreen: React.FC<AiConciergeProps> = ({
               </div>
             ))}
 
-            {/* Quick Interactive Slot-Filling Chips */}
-            <div className="pt-1">
-              {slotStep === 'idle' && (
+            {isSending && (
+              <div className="flex items-start">
+                <div className="max-w-[80%] rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-xs bg-slate-800 border border-slate-700 text-slate-300 flex items-center gap-2">
+                  <IconSparkle size={12} className="text-orange-400 animate-pulse" />
+                  <span>AI Concierge กำลังประมวลผล...</span>
+                </div>
+              </div>
+            )}
+
+            {aiError && (
+              <div className="p-2.5 rounded-xl bg-rose-950/60 border border-rose-500/40 text-rose-200 text-[10.5px] font-bold">
+                {aiError}
+              </div>
+            )}
+
+            {/* Dynamic Quick Chips from AI Concierge API */}
+            <div className="pt-1 space-y-2">
+              {quickChips.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {quickChips.map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      disabled={isSending}
+                      onClick={() => handleUserSend(chip)}
+                      className="text-[10px] bg-orange-500/20 hover:bg-orange-500 disabled:opacity-50 text-orange-200 hover:text-white border border-orange-500/50 px-3 py-1.5 rounded-full font-black transition"
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {quickChips.length === 0 && !isComplete && messages.length <= 1 && (
                 <div className="space-y-1.5">
                   <div className="text-[10px] font-bold text-slate-400">
-                    ประโยคตัวอย่างสำหรับสั่งจองอัตโนมัติ:
+                    ตัวอย่างคำสั่งสำหรับ AI Concierge:
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     <button
                       type="button"
+                      disabled={isSending}
                       onClick={() =>
                         handleUserSend(
-                          'เห้ย ต้องการไปคอนโด B ตอน 9.00 ถ้ามีคนเปิดหารรถไปที่นี่ ให้กดจองให้เลยนะ'
+                          'อยากกลับคอนโด B ตอน 9 โมง ถ้ามีรถว่างจองให้เลย'
                         )
                       }
-                      className="text-left text-[10px] bg-slate-800 hover:bg-slate-700 border border-orange-500/50 text-orange-200 px-2.5 py-1.5 rounded-xl font-bold transition"
+                      className="text-left text-[10px] bg-slate-800 hover:bg-slate-700 disabled:opacity-50 border border-orange-500/50 text-orange-200 px-2.5 py-1.5 rounded-xl font-bold transition"
                     >
-                      "เห้ย ต้องการไปคอนโด B ตอน 9.00 ถ้ามีคนเปิดหารรถไปที่นี่ ให้กดจองให้เลยนะ"
+                      "อยากกลับคอนโด B ตอน 9 โมง ถ้ามีรถว่างจองให้เลย"
                     </button>
                     <button
                       type="button"
+                      disabled={isSending}
                       onClick={() =>
                         handleUserSend(
-                          'พรุ่งนี้มีเรียน SIIT บางกระดี่ 09:00 น. ถ้ามีคนเปิดตี้ให้จองให้ด้วย'
+                          'พรุ่งนี้มีเรียนบางกะดี 09:00 น. ขอ 1 ที่นั่ง จาก มธ'
                         )
                       }
-                      className="text-left text-[10px] bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-2.5 py-1.5 rounded-xl font-bold transition"
+                      className="text-left text-[10px] bg-slate-800 hover:bg-slate-700 disabled:opacity-50 border border-slate-700 text-slate-200 px-2.5 py-1.5 rounded-xl font-bold transition"
                     >
-                      "พรุ่งนี้มีเรียน SIIT บางกระดี่ 09:00 น. ถ้ามีคนเปิดตี้ให้จองให้ด้วย"
+                      "พรุ่งนี้มีเรียนบางกะดี 09:00 น. ขอ 1 ที่นั่ง จาก มธ"
                     </button>
                   </div>
                 </div>
               )}
 
-              {slotStep === 'ask_seats' && (
-                <div className="flex flex-wrap gap-1.5">
-                  {['1 ที่นั่งครับ', '2 ที่นั่ง (ไปกับเพื่อน)', '3 ที่นั่ง'].map(
-                    (chip) => (
-                      <button
-                        key={chip}
-                        type="button"
-                        onClick={() => handleUserSend(chip)}
-                        className="text-[10px] bg-orange-500/20 hover:bg-orange-500 text-orange-200 hover:text-white border border-orange-500/50 px-3 py-1.5 rounded-full font-black transition"
-                      >
-                        {chip}
-                      </button>
-                    )
-                  )}
-                </div>
-              )}
-
-              {slotStep === 'ask_pickup' && (
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    'ขึ้นที่หน้าตึก SIIT รังสิต เลยครับ',
-                    'รับที่ TU Dome',
-                    'รับที่หน้า Kave TU',
-                  ].map((chip) => (
-                    <button
-                      key={chip}
-                      type="button"
-                      onClick={() => handleUserSend(chip)}
-                      className="text-[10px] bg-orange-500/20 hover:bg-orange-500 text-orange-200 hover:text-white border border-orange-500/50 px-3 py-1.5 rounded-full font-black transition"
-                    >
-                      {chip}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {slotStep === 'ask_walk' && (
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    'เดินได้ไม่เกิน 100 เมตรครับ',
-                    'ขอจุดหมายเป๊ะ 0 เมตรเลย',
-                    'เดินได้ไม่เกิน 300 เมตร',
-                    'ลองระบุเกินเพดาน: 800 เมตร',
-                  ].map((chip) => (
-                    <button
-                      key={chip}
-                      type="button"
-                      onClick={() => handleUserSend(chip)}
-                      className="text-[10px] bg-orange-500/20 hover:bg-orange-500 text-orange-200 hover:text-white border border-orange-500/50 px-3 py-1.5 rounded-full font-black transition"
-                    >
-                      {chip}
-                    </button>
-                  ))}
+              {isComplete && (
+                <div className="flex items-center justify-between gap-2 bg-emerald-950/50 border border-emerald-500/40 rounded-xl px-3 py-2 text-[10.5px]">
+                  <span className="text-emerald-200 font-bold">
+                    ข้อมูลครบถ้วนแล้ว (is_complete: true)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleResetSlots}
+                    className="text-orange-300 hover:text-orange-200 font-black underline shrink-0"
+                  >
+                    เริ่มค้นหาใหม่
+                  </button>
                 </div>
               )}
             </div>
@@ -930,19 +932,21 @@ export const AiConciergeScreen: React.FC<AiConciergeProps> = ({
             <input
               type="text"
               value={inputText}
+              disabled={isSending}
               onChange={(e) => setInputText(e.target.value)}
               placeholder={
-                slotStep === 'idle'
-                  ? 'พิมพ์สั่ง AI เช่น ไปคอนโด B ตอน 9.00...'
-                  : 'พิมพ์ตอบคำถาม AI หรือเลือกปุ่มด้านบน...'
+                isSending
+                  ? 'กำลังรอคำตอบจาก AI...'
+                  : 'พิมพ์สั่ง AI เช่น อยากกลับคอนโด B ตอน 9 โมง...'
               }
-              className="flex-1 min-h-[44px] bg-slate-800 border border-slate-700 text-white placeholder-slate-400 text-xs font-bold px-3.5 py-2.5 rounded-xl focus:border-orange-500"
+              className="flex-1 min-h-[44px] bg-slate-800 border border-slate-700 text-white placeholder-slate-400 text-xs font-bold px-3.5 py-2.5 rounded-xl focus:border-orange-500 disabled:opacity-60"
             />
             <button
               type="submit"
-              className="min-h-[44px] min-w-[60px] bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-black text-xs px-4 py-2.5 rounded-xl shadow-md transition shrink-0"
+              disabled={isSending || !inputText.trim()}
+              className="min-h-[44px] min-w-[60px] bg-orange-500 hover:bg-orange-600 disabled:opacity-50 active:scale-95 text-white font-black text-xs px-4 py-2.5 rounded-xl shadow-md transition shrink-0"
             >
-              ส่ง
+              {isSending ? '...' : 'ส่ง'}
             </button>
           </form>
         </>

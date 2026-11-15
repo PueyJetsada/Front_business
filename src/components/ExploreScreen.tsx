@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import {
-  CAMPUS_LOCATIONS,
   getSeatPositionsForRide,
-  ROUTE_PRESETS,
   calculateSmartMatch,
   type BookedRideDetail,
   type BookingMode,
   type RideHop,
   type UserProfile,
 } from '../data/mockData';
+import { QUICK_LANDMARKS, getLandmarkCoords } from './RealTimeMap';
 import {
   DriverBunnySvg,
   IconChatBubble,
@@ -24,7 +23,6 @@ import {
   IconSliders,
   IconSparkle,
   IconSteeringWheel,
-  IconSwap,
   IconUsers,
   PassengerBunnySvg,
 } from './Icons';
@@ -35,6 +33,9 @@ interface ExploreScreenProps {
   isPremium: boolean;
   activeBooking: BookedRideDetail | null;
   isTablet?: boolean;
+  destinationName?: string;
+  destinationPos?: [number, number];
+  onDestinationChange?: (name: string, pos: [number, number]) => void;
   onOpenSeatModal: (
     ride: RideHop,
     initialStep?:
@@ -43,10 +44,14 @@ interface ExploreScreenProps {
       | 'active-status'
       | 'confirm-cancel'
       | 'trip-review'
+      | 'confirm-finish'
   ) => void;
   onOpenDriverChat: (ride: RideHop) => void;
   onOpenAiTab: () => void;
   onOpenCreateTab: () => void;
+  onOpenMapTab?: () => void;
+  onSelectRideForMap?: (rideId: string) => void;
+  lang?: 'th' | 'en';
 }
 
 type SortByOption = 'smart' | 'vibe' | 'destination';
@@ -68,15 +73,23 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
   isPremium,
   activeBooking,
   isTablet = false,
+  destinationName,
+  destinationPos: _destinationPos,
+  onDestinationChange,
   onOpenSeatModal,
   onOpenDriverChat,
   onOpenAiTab,
   onOpenCreateTab,
+  onOpenMapTab,
+  onSelectRideForMap,
+  lang = 'th',
 }) => {
   const [bookingMode, setBookingMode] = useState<BookingMode>('realtime');
-  const [originFilter, setOriginFilter] = useState<string>('SIIT รังสิต');
-  const [destFilter, setDestFilter] = useState<string>('คอนโด B');
+  const originFilter = 'SIIT รังสิต';
+  const destFilter = destinationName || 'คอนโด B';
   const [showAllRoutes, setShowAllRoutes] = useState<boolean>(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   // User-customizable priority weight: 0 = 100% Distance, 100 = 100% Vibe
   const [vibeWeight, setVibeWeight] = useState<number>(75);
@@ -107,7 +120,13 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
   const routeScopedRides = rides.filter((r) => {
     if (r.mode !== bookingMode) return false;
     if (!showAllRoutes) {
-      if (r.origin !== originFilter || r.destination !== destFilter) return false;
+      const matchDest =
+        r.destination.toLowerCase() === destFilter.toLowerCase() ||
+        r.actualDropOffName?.toLowerCase().includes(destFilter.toLowerCase()) ||
+        destFilter.toLowerCase().includes(r.destination.toLowerCase()) ||
+        (destFilter.toLowerCase().includes('kave') && r.destination === 'คอนโด B') ||
+        (destFilter.toLowerCase().includes('condo b') && r.destination === 'คอนโด B');
+      if (r.origin !== originFilter || !matchDest) return false;
     }
     if (
       selectedVibeFilters.length > 0 &&
@@ -156,18 +175,6 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
     smart: 'คะแนน Match',
     vibe: 'Vibe ตรงกัน',
     destination: 'ระยะใกล้สุด',
-  };
-
-  const handlePresetClick = (origin: string, destination: string, mode?: BookingMode) => {
-    setShowAllRoutes(false);
-    setOriginFilter(origin);
-    setDestFilter(destination);
-    if (mode) setBookingMode(mode);
-  };
-
-  const handleSwapRoute = () => {
-    setOriginFilter(destFilter);
-    setDestFilter(originFilter);
   };
 
   const triggerSocialPreview = (handle: string) => {
@@ -267,7 +274,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
               }`}
             >
               <IconClock size={14} />
-              <span>เดินทางตอนนี้</span>
+              <span>{lang === 'en' ? 'Hop Now' : 'เดินทางตอนนี้'}</span>
             </button>
             <button
               type="button"
@@ -279,90 +286,87 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
               }`}
             >
               <IconSparkle size={14} />
-              <span>จองล่วงหน้า</span>
+              <span>{lang === 'en' ? 'Pre-Book' : 'จองล่วงหน้า'}</span>
             </button>
           </div>
 
-          {/* Route Inputs */}
-          <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
-            <div className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 min-h-[44px] flex flex-col justify-center">
-              <span className="text-[8px] font-bold text-slate-400 block leading-none">
-                ต้นทาง
+          {/* Route Inputs (Google Maps Style: Fixed Pickup at your location, Selectable Destination) */}
+          <div className="space-y-2">
+            {/* 1. Pickup: Fixed strictly at where you currently are */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2.5 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-3 h-3 rounded-full bg-blue-600 border-2 border-white shadow-sm shrink-0" />
+                <div className="min-w-0">
+                  <span className="text-[9px] font-bold text-slate-400 block leading-tight">
+                    {lang === 'en' ? 'PICKUP (Your Location)' : 'จุดรับ (ตำแหน่งที่คุณอยู่)'}
+                  </span>
+                  <div className="text-xs font-black text-slate-900 truncate">
+                    📍 {originFilter}
+                  </div>
+                </div>
+              </div>
+              <span className="text-[9px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 shrink-0">
+                {lang === 'en' ? 'Auto GPS' : 'ตำแหน่งปัจจุบัน'}
               </span>
-              <select
-                value={originFilter}
-                onChange={(e) => {
-                  setShowAllRoutes(false);
-                  setOriginFilter(e.target.value);
-                }}
-                aria-label="ต้นทาง"
-                className="w-full bg-transparent text-xs font-black text-slate-900 focus:outline-none mt-0.5"
-              >
-                {CAMPUS_LOCATIONS.map((loc) => (
-                  <option key={loc} value={loc}>
-                    {loc}
-                  </option>
-                ))}
-              </select>
             </div>
 
-            <button
-              type="button"
-              onClick={handleSwapRoute}
-              title="สลับต้นทาง-ปลายทาง"
-              aria-label="สลับต้นทาง-ปลายทาง"
-              className="w-11 h-11 min-h-[44px] min-w-[44px] rounded-full bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-600 flex items-center justify-center active:scale-95 transition shrink-0"
-            >
-              <IconSwap size={15} />
-            </button>
-
-            <div className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 min-h-[44px] flex flex-col justify-center">
-              <span className="text-[8px] font-bold text-slate-400 block leading-none">
-                ปลายทาง
-              </span>
-              <select
-                value={destFilter}
-                onChange={(e) => {
-                  setShowAllRoutes(false);
-                  setDestFilter(e.target.value);
-                }}
-                aria-label="ปลายทาง"
-                className="w-full bg-transparent text-xs font-black text-slate-900 focus:outline-none mt-0.5"
+            {/* 2. Destination: Click to search or pick on map */}
+            <div className="flex items-center gap-2 w-full min-w-0">
+              <button
+                type="button"
+                onClick={() => setIsSearchModalOpen(true)}
+                className="flex-1 min-w-0 bg-white border-2 border-emerald-500/80 hover:border-emerald-600 rounded-2xl p-2.5 flex items-center justify-between gap-2 text-left shadow-sm active:scale-[0.99] transition overflow-hidden"
               >
-                {CAMPUS_LOCATIONS.map((loc) => (
-                  <option key={loc} value={loc}>
-                    {loc}
-                  </option>
-                ))}
-              </select>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <span className="w-3 h-3 rounded-full bg-emerald-600 border-2 border-white shadow-sm shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[9px] font-bold text-emerald-700 block leading-tight">
+                      {lang === 'en' ? 'DESTINATION (Tap to choose)' : 'จุดหมายปลายทาง (แตะเพื่อเลือก)'}
+                    </span>
+                    <div className="text-xs font-black text-slate-900 truncate">
+                      🏁 {destFilter}
+                    </div>
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-slate-400 shrink-0">🔍</span>
+              </button>
+
+              {onOpenMapTab && (
+                <button
+                  type="button"
+                  onClick={onOpenMapTab}
+                  className="min-h-[48px] px-2.5 sm:px-3 bg-orange-50 hover:bg-orange-100 border-2 border-orange-200 text-orange-600 rounded-2xl text-[11px] font-black flex items-center justify-center gap-1 shadow-sm active:scale-95 transition shrink-0 whitespace-nowrap"
+                  title="เปิดแผนที่เพื่อเลือกจุดหมาย"
+                >
+                  <IconPin size={14} className="shrink-0" />
+                  <span className="leading-tight text-center">{lang === 'en' ? 'Pick on Map' : 'เลือกในแผนที่'}</span>
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Preset Route Chips */}
+          {/* Quick Destination Chips */}
           <div className="flex gap-1.5 items-center overflow-x-auto no-scrollbar pt-0.5">
-            {ROUTE_PRESETS.map((preset) => {
-              const isSelected =
-                !showAllRoutes &&
-                originFilter === preset.origin &&
-                destFilter === preset.destination;
+            <span className="text-[9px] font-bold text-slate-400 shrink-0">
+              {lang === 'en' ? 'Quick:' : 'จุดยอดนิยม:'}
+            </span>
+            {['คอนโด B', 'SIIT บางกระดี่', 'TU Dome', 'Kave TU', 'Future Park รังสิต', 'ยิม 7'].map((spot) => {
+              const isSelected = destFilter === spot;
               return (
                 <button
-                  key={preset.id}
+                  key={spot}
                   type="button"
-                  onClick={() =>
-                    handlePresetClick(
-                      preset.origin,
-                      preset.destination,
-                      preset.id === 'inter-campus' ? 'prebook' : 'realtime'
-                    )
-                  }
-                  className={`min-h-[36px] text-[10px] px-3 py-1 rounded-full font-black border shrink-0 active:scale-95 transition ${
+                  onClick={() => {
+                    setShowAllRoutes(false);
+                    onDestinationChange?.(spot, getLandmarkCoords(spot));
+                  }}
+                  className={`min-h-[32px] text-[10px] px-2.5 py-1 rounded-full font-black border shrink-0 active:scale-95 transition ${
                     isSelected
-                      ? 'bg-orange-500 text-white border-orange-500'
-                      : 'bg-orange-50 text-orange-800 border-orange-200 hover:bg-orange-100'
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-emerald-400'
                   }`}
                 >
-                  {preset.label}
+                  {spot}
                 </button>
               );
             })}
@@ -375,7 +379,7 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                   : 'bg-slate-100 text-slate-600 border-slate-200'
               }`}
             >
-              ทุกเส้นทาง
+              {lang === 'en' ? 'All Routes' : 'ทุกเส้นทาง'}
             </button>
           </div>
         </div>
@@ -650,6 +654,8 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
       >
         {enrichedRides.map(({ ride, match }, idx) => {
           const isThisRideBooked = activeBooking?.rideId === ride.id;
+          const isInspectedOnTablet =
+            isTablet && inspectedEntry?.ride.id === ride.id;
           const regularFarePerSeat = ride.baseFare + ride.commissionFee;
           const premiumSavingPerSeat = isPremium ? ride.commissionFee : 0;
           const netPerSeat = regularFarePerSeat - premiumSavingPerSeat;
@@ -676,8 +682,14 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
               onClick={() => {
                 if (isTablet) setInspectedRideId(ride.id);
               }}
-              className={`bg-white p-3.5 rounded-2xl shadow-sm transition space-y-2.5 flex flex-col justify-between overflow-hidden min-w-0 border-2 border-slate-200 hover:border-orange-300 ${
+              className={`bg-white p-3.5 rounded-2xl shadow-sm transition space-y-2.5 flex flex-col justify-between overflow-hidden min-w-0 ${
                 isTablet ? 'cursor-pointer' : ''
+              } ${
+                isInspectedOnTablet
+                  ? 'border-[3px] border-orange-500 ring-2 ring-orange-200'
+                  : idx === 0
+                    ? 'border-[3px] border-orange-500'
+                    : 'border-2 border-slate-200 hover:border-orange-300'
               }`}
             >
               <div className="space-y-2 min-w-0">
@@ -872,32 +884,51 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                 </div>
               </div>
 
-              {/* Open Seat Picker / Active Trip Status Button (10% Brand Accent for High Visibility) */}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setInspectedRideId(ride.id);
-                  onOpenSeatModal(ride);
-                }}
-                className={`w-full min-h-[44px] text-white text-xs font-black py-2.5 rounded-xl shadow-md active:scale-95 transition flex items-center justify-center gap-1.5 ${
-                  isThisRideBooked
-                    ? 'bg-emerald-600 hover:bg-emerald-700'
-                    : 'bg-orange-500 hover:bg-orange-600'
-                }`}
-              >
-                {isThisRideBooked && activeBooking ? (
-                  <>
-                    <IconCheck size={14} />
-                    <span>
-                      กำลังเดินทาง ({bookedSeatNames} • สุทธิ ฿
-                      {activeBooking.netPaid}) — ดูสถานะ/จบทริป
-                    </span>
-                  </>
-                ) : (
-                  <span>{`เลือกที่นั่งและจองรถ (สุทธิ ฿${netPerSeat}/คน)`}</span>
-                )}
-              </button>
+              {/* Action Buttons: View Route on Map & Select Seats */}
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setInspectedRideId(ride.id);
+                    if (onSelectRideForMap) {
+                      onSelectRideForMap(ride.id);
+                    } else if (onOpenMapTab) {
+                      onOpenMapTab();
+                    }
+                  }}
+                  className="col-span-1 min-h-[44px] bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-600 text-xs font-black py-2.5 rounded-xl shadow-xs active:scale-95 transition flex items-center justify-center gap-1"
+                  title={lang === 'en' ? 'View route on map' : 'ดูเส้นทางบนแผนที่'}
+                >
+                  <span>🗺️</span>
+                  <span>{lang === 'en' ? 'Map' : 'ดูแผนที่'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setInspectedRideId(ride.id);
+                    onOpenSeatModal(ride);
+                  }}
+                  className={`col-span-2 min-h-[44px] text-white text-xs font-black py-2.5 px-2 rounded-xl shadow-md active:scale-95 transition flex items-center justify-center gap-1.5 ${
+                    isThisRideBooked
+                      ? 'bg-emerald-600 hover:bg-emerald-700'
+                      : 'bg-orange-500 hover:bg-orange-600'
+                  }`}
+                >
+                  {isThisRideBooked && activeBooking ? (
+                    <>
+                      <IconCheck size={14} />
+                      <span className="truncate">
+                        กำลังเดินทาง ({bookedSeatNames})
+                      </span>
+                    </>
+                  ) : (
+                    <span className="truncate">{`เลือกที่นั่ง (฿${netPerSeat})`}</span>
+                  )}
+                </button>
+              </div>
             </div>
           );
         })}
@@ -960,17 +991,15 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
               </div>
             </div>
 
-            {/* Live 2D Car Seat Preview in Split-View (Dynamic Sedan vs SUV 2-3-2 vs MPV 2-2-3 Captain Seats) */}
+            {/* Live 2D Car Seat Preview in Split-View (Dynamic Sedan vs SUV/MPV) */}
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2">
               <div className="flex items-center justify-between text-[10px] font-black text-slate-700">
                 <span>
                   ผังที่นั่งในรถ (
-                  {inspectedEntry.ride.vehicleType === 'mpv'
-                    ? 'MPV 2-2-3 เบาะแยก'
-                    : inspectedEntry.ride.vehicleType === 'suv' ||
-                        inspectedEntry.ride.totalSeats >= 6
-                      ? 'SUV 2-3-2'
-                      : 'รถเก๋ง 4 ที่นั่ง'}
+                  {inspectedEntry.ride.vehicleType === 'suv' ||
+                  inspectedEntry.ride.totalSeats >= 6
+                    ? 'SUV 7 ที่นั่ง'
+                    : 'รถเก๋ง 4 ที่นั่ง'}
                   )
                 </span>
                 <span className="text-emerald-700">
@@ -1011,84 +1040,8 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
                   </div>
                 </div>
 
-                {inspectedEntry.ride.vehicleType === 'mpv' ? (
-                  <>
-                    <div className="grid grid-cols-[1fr_auto_1fr] gap-1.5 items-center px-1">
-                      {(['M1'] as const).map((seatId) => {
-                        const isOcc =
-                          inspectedEntry.ride.occupiedSeats.includes(seatId);
-                        const meta = getSeatPositionsForRide(
-                          inspectedEntry.ride
-                        ).find((s) => s.id === seatId)!;
-                        return (
-                          <button
-                            key={seatId}
-                            type="button"
-                            onClick={() => onOpenSeatModal(inspectedEntry.ride)}
-                            className={`h-11 rounded-xl border-2 flex flex-col items-center justify-center text-[8px] font-black transition ${
-                              isOcc
-                                ? 'bg-slate-200 border-slate-300 text-slate-400'
-                                : 'bg-emerald-50 border-emerald-400 text-emerald-950 hover:bg-orange-500 hover:text-white hover:border-orange-600'
-                            }`}
-                          >
-                            <span>{meta.code}</span>
-                            <span className="text-[7px]">{meta.shortLabel}</span>
-                          </button>
-                        );
-                      })}
-                      <div className="px-1 py-1.5 rounded border border-dashed border-slate-300 text-[7px] font-black text-slate-400 text-center leading-tight">
-                        เบาะแยก
-                      </div>
-                      {(['M2'] as const).map((seatId) => {
-                        const isOcc =
-                          inspectedEntry.ride.occupiedSeats.includes(seatId);
-                        const meta = getSeatPositionsForRide(
-                          inspectedEntry.ride
-                        ).find((s) => s.id === seatId)!;
-                        return (
-                          <button
-                            key={seatId}
-                            type="button"
-                            onClick={() => onOpenSeatModal(inspectedEntry.ride)}
-                            className={`h-11 rounded-xl border-2 flex flex-col items-center justify-center text-[8px] font-black transition ${
-                              isOcc
-                                ? 'bg-slate-200 border-slate-300 text-slate-400'
-                                : 'bg-emerald-50 border-emerald-400 text-emerald-950 hover:bg-orange-500 hover:text-white hover:border-orange-600'
-                            }`}
-                          >
-                            <span>{meta.code}</span>
-                            <span className="text-[7px]">{meta.shortLabel}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {(['B1', 'B2', 'B3'] as const).map((seatId) => {
-                        const isOcc =
-                          inspectedEntry.ride.occupiedSeats.includes(seatId);
-                        const meta = getSeatPositionsForRide(
-                          inspectedEntry.ride
-                        ).find((s) => s.id === seatId)!;
-                        return (
-                          <button
-                            key={seatId}
-                            type="button"
-                            onClick={() => onOpenSeatModal(inspectedEntry.ride)}
-                            className={`h-11 rounded-xl border-2 flex flex-col items-center justify-center text-[8px] font-black transition ${
-                              isOcc
-                                ? 'bg-slate-200 border-slate-300 text-slate-400'
-                                : 'bg-emerald-50 border-emerald-400 text-emerald-950 hover:bg-orange-500 hover:text-white hover:border-orange-600'
-                            }`}
-                          >
-                            <span>{meta.code}</span>
-                            <span className="text-[7px]">{meta.shortLabel}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </>
-                ) : inspectedEntry.ride.vehicleType === 'suv' ||
-                  inspectedEntry.ride.totalSeats >= 6 ? (
+                {inspectedEntry.ride.vehicleType === 'suv' ||
+                inspectedEntry.ride.totalSeats >= 6 ? (
                   <>
                     <div className="grid grid-cols-3 gap-1.5">
                       {(['M1', 'M2', 'M3'] as const).map((seatId) => {
@@ -1340,6 +1293,91 @@ export const ExploreScreen: React.FC<ExploreScreenProps> = ({
             >
               ใช้ตัวกรองนี้ ({enrichedRides.length} ทริปที่ตรงเงื่อนไข)
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Search Landmark Modal (Pic 2: เลือกสถานที่บน Google Maps) */}
+      {isSearchModalOpen && (
+        <div
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setIsSearchModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-3xl p-4 shadow-2xl border border-slate-200 w-full max-w-sm space-y-3 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                <span className="text-base">📍</span>
+                <span>{lang === 'en' ? 'Select Location on Google Maps' : 'เลือกสถานที่บน Google Maps'}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsSearchModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold flex items-center justify-center text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Search input */}
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={lang === 'en' ? 'Type landmark (e.g. Kave, TU Dome, Future)...' : 'พิมพ์ชื่อ เช่น Kave, TU Dome, คอนโด B, ฟิวเจอร์...'}
+              className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-orange-500 font-bold"
+              autoFocus
+            />
+
+            {/* Landmark list */}
+            <div className="max-h-56 overflow-y-auto space-y-1 custom-scroll">
+              {QUICK_LANDMARKS.filter(
+                (item) =>
+                  !searchQuery ||
+                  item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  item.desc.toLowerCase().includes(searchQuery.toLowerCase())
+              ).map((item) => (
+                <button
+                  key={item.name}
+                  type="button"
+                  onClick={() => {
+                    onDestinationChange?.(item.name, [item.lat, item.lon]);
+                    setShowAllRoutes(false);
+                    setIsSearchModalOpen(false);
+                  }}
+                  className="w-full text-left p-2 rounded-xl hover:bg-emerald-50 flex items-center justify-between text-xs transition group"
+                >
+                  <div className="min-w-0 pr-2">
+                    <div className="font-black text-slate-800 group-hover:text-emerald-700">
+                      {item.name}
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-bold truncate">
+                      {item.desc}
+                    </div>
+                  </div>
+                  <span className="text-[9px] font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg border border-emerald-200 shrink-0">
+                    {lang === 'en' ? 'Select' : 'เลือก'}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Direct Map Button */}
+            {onOpenMapTab && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSearchModalOpen(false);
+                  onOpenMapTab();
+                }}
+                className="w-full py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-black text-xs shadow-sm flex items-center justify-center gap-1.5 transition active:scale-95"
+              >
+                <IconPin size={14} />
+                <span>{lang === 'en' ? 'Or pick directly on map' : 'หรือแตะเลือกบนแผนที่'}</span>
+              </button>
+            )}
           </div>
         </div>
       )}
